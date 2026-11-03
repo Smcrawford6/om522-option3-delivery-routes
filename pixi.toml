@@ -1,0 +1,28 @@
+[workspace]
+name = "om522-option3-routes"
+version = "1.0.0"
+description = "OM 522 option 3 decision tool: delivery routes under capacity, time windows, and shift length."
+authors = ["Sadie Crawford", "Zacc Gleason", "Annabelle Kemp"]
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+
+[dependencies]
+python = "3.12.*"
+matplotlib-base = ">=3.8"
+pytest = ">=8.0"
+
+[tasks]
+# The graded command: researched method, default settings.
+solve = "python -m vrptw solve"
+# The rule to beat through the same input/output contract.
+rule = "python -m vrptw solve --method rule"
+# Independent checker: reads only the input files and a decision file.
+check = "python -m vrptw check"
+compare = "python -m vrptw compare"
+stress = "python -m vrptw stress"
+test = "pytest -q"
+# Regenerates every submitted table and figure (scenarios first).
+reproduce = "python -m vrptw reproduce"
+
+# Rebuilds presentation/slides.html and presentation/script.html from results/.
+presentation = "python presentation/build.py"

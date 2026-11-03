@@ -1,0 +1,8 @@
+.pixi/
+__pycache__/
+.pytest_cache/
+*.pyc
+out/
+# Course materials and the duplicate copy of the data ZIP stay out of the repository.
+*.pdf
+option_03_capacitated_vehicle_routing_time_windows/

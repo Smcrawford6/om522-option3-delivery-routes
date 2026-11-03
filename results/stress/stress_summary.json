@@ -1,0 +1,37 @@
+{
+  "instance": "development_medium",
+  "seed": 20261103,
+  "scenarios": 30,
+  "congestion_cv": 0.15,
+  "leg_cv": 0.1,
+  "summary": {
+    "rule": {
+      "planned_travel": 1683.3970000000002,
+      "travel_mean": 1639.3565473383849,
+      "travel_p90": 1918.5882140719423,
+      "vehicles_mean": 11,
+      "vehicles_p90": 11.0,
+      "scenarios_with_violation": 6,
+      "violations_total": 12,
+      "violations_mean": 0.4,
+      "violations_p90": 2.0,
+      "late_services_total": 6,
+      "late_returns_total": 6,
+      "lateness_mean_min": 2.1401599650204166
+    },
+    "researched": {
+      "planned_travel": 1071.159,
+      "travel_mean": 1046.361754056767,
+      "travel_p90": 1241.6426279046132,
+      "vehicles_mean": 8,
+      "vehicles_p90": 8.0,
+      "scenarios_with_violation": 7,
+      "violations_total": 12,
+      "violations_mean": 0.4,
+      "violations_p90": 1.1,
+      "late_services_total": 12,
+      "late_returns_total": 0,
+      "lateness_mean_min": 1.6804192155843798
+    }
+  }
+}
