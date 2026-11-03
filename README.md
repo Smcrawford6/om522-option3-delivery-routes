@@ -239,7 +239,7 @@ congestion.
 
 ## Changes since the prototype
 
-The prototype (repository `om522-delivery-routing`) used the same family of researched method: Solomon
+The prototype used the same family of researched method: Solomon
 I1, then local search, then large neighborhood search. For the final submission we rebuilt the code as
 one small plain-Python package in the class's style. We did this so each member can explain it, and
 dropped numba and polars. We made four changes:
