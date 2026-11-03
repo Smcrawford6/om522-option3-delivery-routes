@@ -111,7 +111,7 @@
       "best_iteration": 1789,
       "best_cost": 2174.585,
       "stopping_rule": "iteration count",
-      "rejected_for_crossing": 43,
+      "rejected_infeasible": 43,
       "chain": 0,
       "chain_seed": 52200
     },
@@ -120,7 +120,7 @@
       "best_iteration": 1029,
       "best_cost": 2174.9519999999998,
       "stopping_rule": "iteration count",
-      "rejected_for_crossing": 3,
+      "rejected_infeasible": 3,
       "chain": 1,
       "chain_seed": 52201
     },
@@ -129,7 +129,7 @@
       "best_iteration": 1506,
       "best_cost": 2164.549,
       "stopping_rule": "iteration count",
-      "rejected_for_crossing": 43,
+      "rejected_infeasible": 43,
       "chain": 2,
       "chain_seed": 52202
     },
@@ -138,13 +138,13 @@
       "best_iteration": 1579,
       "best_cost": 2155.902,
       "stopping_rule": "iteration count",
-      "rejected_for_crossing": 4,
+      "rejected_infeasible": 4,
       "chain": 3,
       "chain_seed": 52203
     }
   ],
   "best_cost": 2155.902,
   "stopping_rule": "iteration count",
-  "seconds": 90.85963429999902,
-  "computation_time_s": 90.85966069999995
+  "seconds": 84.72186839999995,
+  "computation_time_s": 84.72189470000012
 }

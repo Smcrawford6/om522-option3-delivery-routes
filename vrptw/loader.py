@@ -46,7 +46,7 @@ def _convert(text, kind, file_name, column, row_number):
     try:
         _value = float(text)
     except ValueError:
-        raise InputError(f"{_where}: '{text}' is not a {kind}") from None
+        raise InputError(f"{_where}: '{text}' is not {'an' if kind == 'integer' else 'a'} {kind}") from None
     if not math.isfinite(_value):
         raise InputError(f"{_where}: '{text}' is not a finite {kind}")
     if kind == "integer":

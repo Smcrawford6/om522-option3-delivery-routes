@@ -67,9 +67,9 @@ def compare():
             if decision is None:
                 _row.update(status="no feasible decision found", checker="n/a")
             else:
-                with open(_path, "w", encoding="utf-8") as _f:
+                with open(_path, "w", encoding="utf-8", newline="\n") as _f:
                     json.dump(decision, _f, indent=2)
-                with open(_path.parent / "run_info.json", "w", encoding="utf-8") as _f:
+                with open(_path.parent / "run_info.json", "w", encoding="utf-8", newline="\n") as _f:
                     json.dump(dict(info, computation_time_s=seconds), _f, indent=2)
                 report = check_decision(data, decision)
                 _m = report["measures"]
@@ -81,7 +81,7 @@ def compare():
     _columns = ["instance", "customers", "method", "status", "checker", "total_travel_time", "vehicles_used",
                 "waiting_time", "self_crossings", "computation_time_s", "stopping_rule", "start_cost"]
     with open(RESULTS / "comparison.csv", "w", newline="", encoding="utf-8") as _f:
-        _writer = csv.DictWriter(_f, fieldnames=_columns)
+        _writer = csv.DictWriter(_f, lineterminator="\n", fieldnames=_columns)
         _writer.writeheader()
         _writer.writerows(_rows)
     _write_comparison_md(_rows)
@@ -97,7 +97,9 @@ def _write_comparison_md(rows):
         f"- Computer: {machine()}",
         f"- Researched method defaults: seed {researched.DEFAULT_SEED}, {researched.DEFAULT_CHAINS} chains x "
         f"{researched.DEFAULT_ITERATIONS} ruin-and-recreate iterations, safety time cap "
-        f"{researched.DEFAULT_TIME_LIMIT:.0f} s (never reached)",
+        f"{researched.DEFAULT_TIME_LIMIT:.0f} s ("
+        + ("reached on at least one run" if any("time limit" in str(r["stopping_rule"]) for r in rows)
+           else "never reached") + ")",
         "- The rule to beat has no settings and no time limit.",
         "- Every measure was recomputed by the independent checker from the written decision.json.",
         "- Self-crossings count pairs of legs of one route that cross on the map (the team's added "
@@ -121,7 +123,7 @@ def _write_comparison_md(rows):
         _save = _a["total_travel_time"] - _b["total_travel_time"]
         _lines.append(f"| {_name} | {_a['total_travel_time']:.3f} | {_b['total_travel_time']:.3f} | {_save:.3f} | "
                       f"{100 * _save / _a['total_travel_time']:.1f}% | {_a['vehicles_used']} -> {_b['vehicles_used']} |")
-    (RESULTS / "comparison.md").write_text("\n".join(_lines) + "\n", encoding="utf-8")
+    (RESULTS / "comparison.md").write_text("\n".join(_lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def _plot_comparison(rows):
@@ -201,13 +203,13 @@ def generate_scenarios():
         _congestion = _lognormal(rng, CONGESTION_CV)
         _factors.append({"scenario": _s, "congestion_factor": _congestion})
         with open(_folder / f"scenario_{_s:02d}.csv", "w", newline="", encoding="utf-8") as _f:
-            _writer = csv.writer(_f)
+            _writer = csv.writer(_f, lineterminator="\n")
             _writer.writerow(["from_id", "to_id", "travel_time"])
             for _a, _b in _pairs:
                 _base = data["travel"][(_a, _b)]
                 _writer.writerow([_a, _b, repr(_base * _congestion * _lognormal(rng, LEG_CV)) if _a != _b else 0.0])
     with open(_folder / "congestion_factors.csv", "w", newline="", encoding="utf-8") as _f:
-        _writer = csv.DictWriter(_f, fieldnames=["scenario", "congestion_factor"])
+        _writer = csv.DictWriter(_f, lineterminator="\n", fieldnames=["scenario", "congestion_factor"])
         _writer.writeheader()
         _writer.writerows(_factors)
     print(f"saved {SCENARIOS} scenarios (seed {STRESS_SEED}) to {_folder.relative_to(ROOT)}")
@@ -253,7 +255,7 @@ def stress():
         if not _path.exists():  # the plans come from the deterministic comparison
             decision, _, _ = run_method(data, _method)
             _path.parent.mkdir(parents=True, exist_ok=True)
-            with open(_path, "w", encoding="utf-8") as _f:
+            with open(_path, "w", encoding="utf-8", newline="\n") as _f:
                 json.dump(decision, _f, indent=2)
         with open(_path, encoding="utf-8") as _f:
             _plans[_method] = json.load(_f)
@@ -264,7 +266,7 @@ def stress():
         for _method in METHODS:
             _rows.append(dict(scenario=_s, method=_method, **execute_plan(data, _plans[_method], _travel)))
     with open(RESULTS / "stress" / "stress_results.csv", "w", newline="", encoding="utf-8") as _f:
-        _writer = csv.DictWriter(_f, fieldnames=list(_rows[0]))
+        _writer = csv.DictWriter(_f, lineterminator="\n", fieldnames=list(_rows[0]))
         _writer.writeheader()
         _writer.writerows(_rows)
     _summary = {}
@@ -285,7 +287,7 @@ def stress():
             "late_returns_total": sum(r["late_returns"] for r in _mine),
             "lateness_mean_min": statistics.mean(r["lateness_min"] for r in _mine),
         }
-    with open(RESULTS / "stress" / "stress_summary.json", "w", encoding="utf-8") as _f:
+    with open(RESULTS / "stress" / "stress_summary.json", "w", encoding="utf-8", newline="\n") as _f:
         json.dump({"instance": STRESS_INSTANCE, "seed": STRESS_SEED, "scenarios": SCENARIOS,
                    "congestion_cv": CONGESTION_CV, "leg_cv": LEG_CV, "summary": _summary}, _f, indent=2)
     _write_stress_md(_summary)
@@ -324,9 +326,9 @@ def _sensitivity(data, plans):
             _table.append(_row)
             _lines.append(f"| {_level:.1f} | {_method} | {_row['travel_mean']:.1f} | {_row['scenarios_with_violation']} | "
                           f"{_row['violations_total']} | {_row['late_returns_total']} | {_row['lateness_mean_min']:.1f} |")
-    (RESULTS / "stress" / "sensitivity.md").write_text("\n".join(_lines) + "\n", encoding="utf-8")
+    (RESULTS / "stress" / "sensitivity.md").write_text("\n".join(_lines) + "\n", encoding="utf-8", newline="\n")
     with open(RESULTS / "stress" / "sensitivity.csv", "w", newline="", encoding="utf-8") as _f:
-        _writer = csv.DictWriter(_f, fieldnames=list(_table[0]))
+        _writer = csv.DictWriter(_f, lineterminator="\n", fieldnames=list(_table[0]))
         _writer.writeheader()
         _writer.writerows(_table)
 
@@ -358,7 +360,7 @@ def _write_stress_md(summary):
                                ("Minutes late per scenario, mean", "lateness_mean_min", "{:.2f}")):
         _lines.append(f"| {_label} | {_fmt.format(_a[_key])} | {_fmt.format(_b[_key])} |")
     _lines += ["", "The 90th percentile uses Python's statistics.quantiles(n=10, method='inclusive')."]
-    (RESULTS / "stress" / "stress_summary.md").write_text("\n".join(_lines) + "\n", encoding="utf-8")
+    (RESULTS / "stress" / "stress_summary.md").write_text("\n".join(_lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def _plot_stress(rows):

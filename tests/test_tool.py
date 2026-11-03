@@ -169,6 +169,7 @@ def test_reordered_rows_give_same_rule_travel(tmp_path):
     inst = Instance(data)
     moved = check_decision(data, to_decision(nearest_feasible_neighbor(inst), inst))
     assert moved["measures"]["total_travel_time"] == pytest.approx(base["measures"]["total_travel_time"])
+    assert [r["visits"] for r in moved["routes"]] == [r["visits"] for r in base["routes"]]
 
 
 def test_solve_command_writes_decision_and_summary(tmp_path):

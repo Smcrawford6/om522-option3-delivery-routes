@@ -47,12 +47,12 @@ def write_summary(out, status, method_info, seconds, report=None):
     if report is not None:
         _summary["checker"] = {"feasible": report["feasible"], "violations": report["violations"],
                                "warnings": report["warnings"], "measures": report["measures"]}
-    with open(out / "summary.json", "w", encoding="utf-8") as _f:
+    with open(out / "summary.json", "w", encoding="utf-8", newline="\n") as _f:
         json.dump(_summary, _f, indent=2)
     _lines = [f"# Run summary", "", f"- Status: {status}", f"- Method: {method_info.get('method')}",
               f"- Stopping rule: {method_info.get('stopping_rule', 'n/a')}",
               f"- Computation time: {seconds:.3f} s"]
-    if "crossing_rule" in method_info:
+    if "crossing_rule" in method_info and status != NO_DECISION:
         _lines.append(f"- No-self-crossing rule (team constraint): {method_info['crossing_rule']}")
     if "seed" in method_info:
         _lines.append(f"- Seed: {method_info['seed']} ({method_info['chains']} chains x "
@@ -66,12 +66,13 @@ def write_summary(out, status, method_info, seconds, report=None):
                    f"- Customers served: {_m['customers_served']}",
                    f"- Self-crossings (team constraint): {_m['self_crossings']}"]
         _lines += [f"- Violation: {v}" for v in report["violations"]]
-    (out / "summary.md").write_text("\n".join(_lines) + "\n", encoding="utf-8")
+    (out / "summary.md").write_text("\n".join(_lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def cmd_solve(args):
     out = Path(args.output_dir)
-    (out / "decision.json").unlink(missing_ok=True)  # never leave a stale decision behind
+    for _name in ("decision.json", "summary.json", "summary.md"):
+        (out / _name).unlink(missing_ok=True)  # never leave a stale result behind
     try:
         data = load_instance(args.input_dir)
     except InputError as error:
@@ -85,7 +86,7 @@ def cmd_solve(args):
         print(NO_DECISION)
         write_summary(out, NO_DECISION, info, seconds)
         return 0
-    with open(out / "decision.json", "w", encoding="utf-8") as _f:
+    with open(out / "decision.json", "w", encoding="utf-8", newline="\n") as _f:
         json.dump(decision, _f, indent=2)
     report = check_decision(data, decision)
     write_summary(out, "feasible" if report["feasible"] else "infeasible (see checker)", info, seconds, report)
@@ -103,8 +104,13 @@ def cmd_check(args):
     except InputError as error:
         print(f"input error: {error}", file=sys.stderr)
         return 2
-    with open(args.decision, encoding="utf-8") as _f:
-        report = check_decision(data, json.load(_f))
+    try:
+        with open(args.decision, encoding="utf-8") as _f:
+            decision = json.load(_f)
+    except (OSError, ValueError) as error:
+        print(f"cannot read decision file {args.decision}: {error}", file=sys.stderr)
+        return 1
+    report = check_decision(data, decision)
     for _route in report["routes"]:
         print(f"{_route['vehicle_id']}: {' -> '.join(_route['visits'])} | load {_route['load']} | "
               f"travel {_route['travel_time']:.3f} | return {_route['return_time']:.3f} | "

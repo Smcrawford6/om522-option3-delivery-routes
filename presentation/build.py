@@ -2,8 +2,9 @@
 
     pixi run presentation
 
-Every number on a slide is read from results/, and every code excerpt is read
-from vrptw/, so the deck cannot drift from the submitted repository.
+Measures, counts, and code excerpts are read from results/ and vrptw/ at build
+time.  A few fixed facts (the worked example's values, the mean congestion
+factor, the prototype's 1,070.565 plan) are typed in and documented in README.
 """
 
 import ast
@@ -128,12 +129,12 @@ SLIDES = []
 
 
 def slide(speaker, title, body, script, pause, kind=""):
-    """pause: seconds for on-screen actions; speech is timed at 150 words per minute,
+    """pause: seconds for on-screen actions; speech is timed at 140 words per minute,
     not counting the [SCREEN: ...] cues."""
     _spoken = [re.sub(r"\[SCREEN:[^\]]*\]", "", p) for p in script]
     _words = sum(len(p.split()) for p in _spoken)
     SLIDES.append({"speaker": speaker, "title": title, "body": body, "script": script,
-                   "seconds": round(_words / 150 * 60) + pause, "kind": kind})
+                   "seconds": round(_words / 140 * 60) + pause, "kind": kind})
 
 
 def snippet(module, marker, count, highlight=()):
@@ -156,7 +157,7 @@ _RUN = {n: json.loads((RES / "decisions" / n / "researched" / "run_info.json").r
         for n in ("development_medium", "development_large")}
 _CHAINS_L = [c["best_cost"] for c in _RUN["development_large"]["chain_results"]]
 _CHAINS_M = [c["best_cost"] for c in _RUN["development_medium"]["chain_results"]]
-_REJECTED = sum(c["rejected_for_crossing"] for c in _RUN["development_large"]["chain_results"])
+_REJECTED = sum(c["rejected_infeasible"] for c in _RUN["development_large"]["chain_results"])
 _ITERS = sum(c["iterations_run"] for c in _RUN["development_large"]["chain_results"])
 with open(RES / "stress" / "stress_results.csv", newline="", encoding="utf-8") as _f:
     _SROWS = list(csv.DictReader(_f))
@@ -166,7 +167,12 @@ _BOTH = [s for s in range(1, 31)
          if all(int(r["violations"]) > 0 for r in _SROWS if int(r["scenario"]) == s)]
 _S11 = SENS[(1.1, "rule")], SENS[(1.1, "researched")]
 _S13 = SENS[(1.3, "rule")], SENS[(1.3, "researched")]
-_EXTRA = float(_S11[0]["travel_mean"]) - float(_S11[1]["travel_mean"])
+_EXTRAS = [float(SENS[(l, "rule")]["travel_mean"]) - float(SENS[(l, "researched")]["travel_mean"]) for l in (1.0, 1.1, 1.2, 1.3)]
+_EXTRA_LO, _EXTRA_HI = min(_EXTRAS), max(_EXTRAS)
+_BAD = "; ".join(f"{SENS[(l, 'rule')]['scenarios_with_violation']} vs {SENS[(l, 'researched')]['scenarios_with_violation']} of 30"
+                 + (" at plan" if l == 1.0 else f" at +{round((l - 1) * 100)}%") for l in (1.0, 1.1, 1.2, 1.3))
+# At planned traffic: 30 days x the daily saving, per extra bad day.
+_PER_DAY = 30 * _EXTRAS[0] / max(1, int(SX["scenarios_with_violation"]) - int(SR["scenarios_with_violation"]))
 _MED_T = float(X_MED["computation_time_s"])
 _LRG_T = float(ROWS[("development_large", "researched")]["computation_time_s"])
 
@@ -203,7 +209,7 @@ slide(SADIE, "The decision", """
   <div class="callout"><h3>Our added assumption</h3><p>A route may <b>not cross itself</b> on the map. A driver shouldn't cut back across their own path. Different routes may cross. Here travel time equals straight-line distance (within 0.0005 min), so uncrossing a route also shortens it.</p></div>
  </div>
 </div>""", [
-    "Each morning a dispatcher decides which truck serves each customer and the order of its stops. Trucks have a capacity. Customers have time windows. A truck that's early waits, and service can't start after the window closes. And every truck has to be back by the end of its shift.",
+    "Each morning a dispatcher decides which truck serves each customer and the order of its stops, under truck capacities, customer time windows, and driver shifts.",
     "We score plans by total driving time first and vehicles used second, and we always report computation time.",
     "We added one assumption: a route can't cross itself on the map, because a driver shouldn't cut back across their own path. Different routes may cross. In this data travel time equals straight-line distance, so uncrossing a route also makes it shorter.",
 ], 3)
@@ -212,7 +218,8 @@ slide(SADIE, "Live demo: a fresh instance", """
 <div class="two">
 <div>
 <p>Git Bash, from the repository root, on a <b>copied</b> instance:</p>
-<pre class="term">$ cp -r development_medium ~/fresh_day
+<pre class="term">$ rm -rf ~/fresh_day ~/bad_day ~/out_*
+$ cp -r development_medium ~/fresh_day
 $ pixi run solve ~/fresh_day ~/out_ours
 $ pixi run rule  ~/fresh_day ~/out_rule
 
@@ -230,10 +237,10 @@ $ pixi run solve ~/bad_day ~/out_bad; echo "exit $?"</pre>
 <tr><td>Valid but infeasible (<code>edge_case</code>)</td><td>prints “no feasible decision found”, no <code>decision.json</code>, exit 0</td></tr>
 <tr><td>Malformed (<code>window_end</code> deleted)</td><td>“input error: customers.csv, column 'window_end' …”, no <code>decision.json</code>, exit 2</td></tr>
 </tbody></table>
-<p class="small"><code>summary.md</code> lists the measures, the checker's verdict, the seed, the stopping rule, and the run time. Annabelle runs the checker on both decisions in a few minutes.</p>
+<p class="small"><code>summary.md</code> lists the measures, the checker's verdict, the seed, the stopping rule, and the run time. Annabelle runs the checker on both decisions on slide 8.</p>
 </div></div>""", [
-    "[SCREEN: terminal, run the first three commands] Here's the instructor's run. I copy the medium instance to a new folder, so nothing's pre-computed, and run the documented solve command. That's our researched method with default settings. It takes about forty seconds, and we've cut most of the wait from the video. Then the rule to beat on the same folder.",
-    "[SCREEN: point at the printed line] Each run prints the total travel, the trucks, the checker's verdict, and the run time, and writes decision.json and a summary.",
+    "[SCREEN: terminal, run the first three commands] Here's the instructor's run. I copy the medium instance to a new folder, so nothing's pre-computed, and run the documented solve command. That's our researched method with default settings. It takes about half a minute, and we've cut most of the wait from the video. Then the rule to beat on the same folder.",
+    "[SCREEN: point at the printed line, then run head ~/out_ours/decision.json] Each run prints its travel, trucks, and checker verdict, and writes decision.json, shown here, and a summary.",
     "[SCREEN: run the edge case, then the malformed copy] On the edge case, one customer needs 65 units and every truck holds 60, so the tool prints 'no feasible decision found' and writes no decision. And if I delete a required column, it names the file and the column and exits with an error.",
 ], 75, "demo")
 
@@ -255,16 +262,16 @@ slide(SADIE, "Method 1: the rule to beat", f"""
 <div class="kpis small-k"><div><b>352.417</b><span>total travel (min), matches</span></div><div><b>232.861</b><span>waiting (min), matches</span></div></div>
 <p class="small">Every arrival and service start matches <code>worked-example/solution.json</code>.</p>
 </div></div>""", [
-    "Method one is the rule to beat, exactly as the brief states it. Trucks go out in ID order. Each one keeps driving to the nearest unserved customer it can still legally serve: the customer fits the remaining capacity, can start before its window closes, and still lets the truck get home by shift end. When nothing qualifies, the next truck starts.",
+    "Method one is the rule to beat, exactly as the brief states it. Trucks go out in ID order, and each keeps driving to the nearest unserved customer it can still legally serve. When nothing qualifies, the next truck starts.",
     f"Required test one checks it reproduces the worked example exactly: the same routes, the same times, and 352.417 minutes of travel. Because it's implemented as written, it ignores our crossing rule, and {_CROSS_ROUTES} of its routes cross themselves on the large case.",
 ], 3)
 
 slide(SADIE, "Walk-through: the rule to beat (agent-drafted)", snippet(
     "rule.py", "_unserved = set(range(1, inst.n + 1))", 25, highlight=("_key = (", "EPS")) + """
-<div class="note"><b>What was unclear:</b> the agent breaks ties by node number, which is only "ties by customer identifier" if nodes are numbered in sorted-ID order (they are: <code>core.py</code> sorts the IDs as strings, the class convention, and the supplied IDs are zero-padded). It also borrowed a 1e-9 tolerance from the researched method, so a window is met if service starts within 1e-9 of its end. <b>How we checked:</b> we traced the first stops of hand_checkable by hand, the test reproduces every time in the worked example, and reversing every file's rows gives the same rule plan.</div>""", [
-    "[SCREEN: rule.py] My component is the rule to beat, which our coding agent drafted. For the current truck it scans every unserved customer. It skips any that don't fit the remaining capacity, can't start before the window closes, or wouldn't leave time to get home. Then it keeps the one with the smallest key: travel time first, then node number.",
+<div class="note"><b>What was unclear:</b> the agent breaks ties by node number, which is only "ties by customer identifier" if nodes are numbered in sorted-ID order (they are: <code>core.py</code> sorts the IDs as strings, the class convention, and the supplied IDs are zero-padded). It also uses the shared 1e-9 tolerance in <code>core.py</code> at window and shift ends. <b>How we checked:</b> no supplied instance has an exact tie, so we confirmed the ordering by reading <code>core.py</code>; we traced the first stops of hand_checkable by hand; the test reproduces every time in the worked example; and reversing every file's rows gives the same routes.</div>""", [
+    "[SCREEN: rule.py] My component is the rule to beat, which our coding agent drafted. It skips customers that don't fit, can't start in time, or wouldn't leave time to get home, and keeps the smallest key: travel time first, then node number.",
     "What was unclear was that tie-break. The brief says ties go by customer ID, but the code uses the node number. Those only match if nodes are numbered in ID order. They are: IDs are sorted as strings, and the supplied ones are zero-padded, so C009 comes before C010.",
-    "How we checked it: I traced the first stops of the hand-checkable case by hand, the test reproduces every arrival in the worked example, and reversing every file's rows gives the same plan.",
+    "How we checked it: no supplied instance has an exact tie, so we confirmed the ordering by reading the code. I traced the first stops of the hand-checkable case by hand, the test reproduces every arrival in the worked example, and reversing every file's rows gives the same routes.",
 ], 5, "code")
 
 slide(ZACC, "Method 2: the researched method", f"""
@@ -285,12 +292,12 @@ slide(ZACC, "Method 2: the researched method", f"""
 </div>""", [
     "Our researched method has three stages. Stage one is Solomon's 1987 insertion heuristic. It seeds a route with a far-away or urgent customer, then keeps inserting the customer that's most worth inserting now, checking every window as it goes. We run twelve parameter settings.",
     "Stage two is local search with the moves the brief lists: relocate customers, exchange them between routes, reverse a segment, and swap route ends.",
-    f"Stage three is ruin and recreate. We tear out a group of customers, put them back, and run the local search again. Simulated annealing decides whether to keep the result. Four seeded chains run 2,000 iterations each, and we keep the best. You can see what each stage buys: {f(R_MED['total_travel_time'], 0)} minutes for the rule, {f(X_MED['start_cost'], 0)} after stage two, and {f(X_MED['total_travel_time'], 0)} at the end.",
+    f"Stage three is ruin and recreate. We tear out a group of customers, put them back, and run the local search again. Simulated annealing decides whether to keep the result. Four seeded chains run 2,000 iterations each, and we keep the best.",
 ], 3)
 
-slide(ZACC, "Feasibility is checked after every move", code_block(
+slide(ZACC, "Every move is checked before it is accepted", code_block(
     "researched.py", "insertion_options", 6, 34, highlight=("_latest[_q]", "inst.late[u]", "shift_end")) + """
-<div class="note"><b>For every local-search move:</b> compute the travel change first (cheap). Only an improving move is then checked for capacity, then every window and the shift end, then self-crossing. A move is accepted only if all three pass, so the search only ever holds feasible plans.</div>""", [
+<div class="note"><b>For every local-search move:</b> compute the travel change first (cheap). Only an improving move is then checked for capacity, then every window and the shift end, then self-crossing. A move is accepted only if every check passes; ruin-and-recreate results get the same full check (slide 9).</div>""", [
     "[SCREEN: researched.py, insertion_options] For every route we cache each stop's service start, and the latest start that still keeps the rest of the route feasible. So inserting a customer needs just two checks: the new customer's own window, and whether the next stop still starts before its latest time. That's constant time, however long the route is.",
     "For the other moves we compute the travel change first. Only an improving move gets the full check: capacity, then windows and shift end, then crossings.",
 ], 3, "code")
@@ -314,22 +321,21 @@ $ pixi run test</pre>
 <li><b>Required:</b> a deleted column is rejected, naming the file and the column.</li></ol>
 <p class="small">Plus: other bad inputs (wrong type, 7.5 in an integer column, zero service time, empty cell, unknown ID); the checker catching four broken decisions; the two crossing tests agreeing on 400 random routes; zero crossings and a win over the rule on two 60-customer copies with renamed IDs; identical reruns; and no stale decision.json after a malformed run.</p>
 </div></div>""", [
-    "[SCREEN: run both check commands, scroll to FEASIBLE] The checker is what protects us from code that claims a result it didn't achieve. It reads only the input files and a decision file, imports nothing from either method, and recomputes every time, load, and measure from the visit lists. Here it confirms both of Sadie's decisions are feasible and lists each route.",
+    "[SCREEN: run both check commands, scroll to FEASIBLE] The checker reads only the input files and a decision file, imports nothing from either method, and recomputes every time, load, and measure from the visit lists. Here it confirms both of Sadie's decisions are feasible and lists each route.",
     "[SCREEN: run pixi run test] The test command runs twenty-one tests. That includes the three the guide requires, broken decisions the checker has to catch, and two 60-customer copies of the data with renamed IDs, the size of the held-out case.",
 ], 25)
 
 slide(ANNABELLE, "Walk-through: the crossing guard (agent-drafted)", snippet(
     "researched.py", "search.set_routes(_current_routes)", 18, highlight=("feasible(r, k)", "_rejected += 1")) + f"""
-<div class="note"><b>What was wrong:</b> the agent's ruin step removed customers without re-checking the route. Skipping a stop draws a shortcut, and the shortcut can cross another leg of that route. The supplied instances showed 0 crossings by luck, but when we tested 60-customer copies, 2 of 4 plans came back with routes crossing themselves. <b>Fix:</b> after recreate and local search, a candidate is kept only if every route passes the full check. <b>How we checked:</b> a new test on 60-customer copies <i>fails on the old code and passes now</i>; on the large case this guard rejected {_REJECTED} of {_ITERS:,} candidates.</div>""", [
+<div class="note"><b>What was wrong:</b> the agent's ruin step removed customers without re-checking the route. Skipping a stop draws a shortcut, and the shortcut can cross another leg of that route. The supplied instances showed 0 crossings by luck, but on our 60-customer test copies, plans came back with routes crossing themselves. <b>Fix:</b> after recreate and local search, a candidate is kept only if every route passes the full check. <b>How we checked:</b> a new test on 60-customer copies <i>fails on the old code and passes now</i>; on the large case this guard rejected {_REJECTED} of {_ITERS:,} candidates.</div>""", [
     "[SCREEN: researched.py, anneal] My component is the acceptance step in ruin and recreate, which the agent drafted. Each iteration starts from the current plan, tears out some customers, puts them back, and runs local search.",
-    "What was wrong: the agent checked crossings when customers were inserted, but not when they were removed. Skipping a stop draws a shortcut, and the shortcut can cross another leg of the route. The supplied instances showed zero crossings by luck, but on 60-customer copies two of four plans had crossing routes.",
+    "What was wrong: the agent checked crossings when customers were inserted, but not when they were removed. Skipping a stop draws a shortcut, and the shortcut can cross another leg of the route. The supplied instances showed zero crossings by luck, but on our 60-customer test copies, plans came back with crossing routes.",
     f"The fix is the highlighted check: after local search, a candidate survives only if every route passes capacity, windows, shift end, and the crossing test. How we checked it: we wrote a test on those 60-customer copies, confirmed it fails on the old code, and it passes now. On the large case the guard threw out {_REJECTED} of {_ITERS:,} candidates.",
 ], 5, "code")
 
 slide(ZACC, "Deterministic comparison: four instances", comparison_table() + f"""
 <img class="wide" src="{img('results/comparison.png')}" alt="Grouped bars of total travel and vehicles by instance">
 <p class="small">Windows 11 laptop, Python 3.12 (Pixi). Rule: no time limit. Researched: default settings; the 300 s safety cap is never reached.</p>""", [
-    "Here's the comparison on all four instances. Every number was recomputed by the checker from the decision files.",
     f"We beat the rule on every instance, and the gap grows with size: 6.5 percent on six customers, 22 percent on 15, {MED_PCT:.0f} percent on 45, and {LRG_PCT:.0f} percent on 120. That's {LRG_SAVE:,.0f} fewer minutes of driving, with {ROWS[('development_large','researched')]['vehicles_used']} trucks instead of {ROWS[('development_large','rule')]['vehicles_used']}.",
     f"The price is computation time: milliseconds for the rule, and for ours about {_MED_T:.0f} seconds on 45 customers and {_LRG_T:.0f} on 120. That's well inside the ten-minute limit. These are four synthetic instances, so we don't claim the method is best in general.",
 ], 3)
@@ -353,12 +359,11 @@ slide(ZACC, "Stress test: what if travel times are wrong?", f"""
     "Each of thirty scenarios has a day-wide congestion factor and a separate factor on every leg, both lognormal with mean one. They come from a fixed seed and are saved to files before either plan runs, so both plans face exactly the same days.",
 ], 3)
 
-slide(ZACC, "Walk-through: the fixed-plan execution (agent-drafted)", snippet(
-    "experiments.py", "def execute_plan", 26, highlight=("max(_time", "window_end", "shift_end")) + f"""
-<div class="note"><b>What was wrong or unclear:</b> (1) the agent's first per-scenario plot showed travel and violations only, but the guide asks for the secondary measure too, so we added a vehicles panel. (2) Mean realized travel came out <i>below</i> plan ({f(SX['travel_mean'])} vs {f(SX['planned_travel'])} min), which looked like a bug. <b>How we checked:</b> the 30 saved congestion factors average 0.974, so it's sampling, not code. We also checked the code against the brief line by line: service starts at the later of arrival and window start even when late, and is counted, not skipped.</div>""", [
-    "[SCREEN: experiments.py, execute_plan] My component is the code that drives a fixed plan through one scenario, which the agent drafted. It follows each route in its planned order with the scenario's travel times. A truck that's early waits. If service starts after the window closes, or the truck gets back after its shift, that's counted as a violation, but the plan doesn't change.",
-    "Two things were wrong or unclear. First, the agent's plot showed travel and violations but left out the secondary measure, vehicles used, which the guide asks for. We added that panel.",
-    f"Second, the average realized travel came out below the plan, {SX['travel_mean']:,.0f} against {SX['planned_travel']:,.0f} minutes, which looked like a bug. We checked the saved congestion factors: they average 0.974, so it's the luck of thirty draws, not the code.",
+slide(ZACC, "Walk-through: fixed-plan execution and its plot (agent-drafted)", snippet(
+    "experiments.py", "def execute_plan", 23, highlight=("max(_time", "window_end", "shift_end")) + f"""
+<div class="note"><b>What was unclear:</b> mean realized travel came out <i>below</i> plan ({f(SX['travel_mean'])} vs {f(SX['planned_travel'])} min), which looked like a bug. <b>How we checked:</b> the 30 saved congestion factors average 0.974, so it's sampling, not code. We also checked the code against the brief line by line: service starts at the later of arrival and window start even when late, and is counted, not skipped. <b>Also wrong:</b> the agent's per-scenario plot (<code>_plot_stress</code>) left out the secondary measure, so we added a vehicles panel.</div>""", [
+    "[SCREEN: experiments.py, execute_plan] My component is the code that drives a fixed plan through one scenario, and its plot, which the agent drafted. It follows each route in its planned order with the scenario's travel times. A truck that's early waits. If service starts after the window closes, or the truck gets back after its shift, that's counted as a violation, but the plan doesn't change.",
+    f"What was unclear: the average realized travel came out below the plan, {SX['travel_mean']:,.0f} against {SX['planned_travel']:,.0f} minutes, which looked like a bug. We checked the saved congestion factors: they average 0.974, so it's the luck of thirty draws, not the code. And one thing was wrong: the agent's plot left out vehicles used, the secondary measure, so we added that panel.",
 ], 5, "code")
 
 slide(ANNABELLE, "Stress-test results", f"""
@@ -372,9 +377,9 @@ slide(ANNABELLE, "Stress-test results", f"""
 
 slide(ANNABELLE, "When does the answer change? Heavier congestion", sensitivity_table() + f"""
 <p class="small">The same 30 saved scenarios, rescaled so average congestion is 10–30% above the planning data (each scenario keeps its own draws; only the level changes).</p>
-<div class="callout"><p>As traffic gets worse, our plan never has more total violations, has far fewer late returns, and is late for about half as many minutes. But because it packs each route more tightly, <b>more days have at least one late stop</b> ({_S11[1]['scenarios_with_violation']} vs {_S11[0]['scenarios_with_violation']} days at +10%).</p></div>""", [
+<div class="callout"><p>As traffic gets worse, our plan never has more total violations, has far fewer late returns, and from +10% on is late for about half as many minutes. But because it packs each route more tightly, <b>more days have at least one late stop</b> ({_S11[1]['scenarios_with_violation']} vs {_S11[0]['scenarios_with_violation']} days at +10%).</p></div>""", [
     "To find a condition that would change our answer, we rescaled the same thirty days to heavier average traffic: ten, twenty, and thirty percent above the planning data.",
-    f"Our plan never has more total violations than the rule, has far fewer late returns, and is late for about half as many minutes. But because it packs routes tighter, more days have at least one late stop: {_S11[1]['scenarios_with_violation']} against {_S11[0]['scenarios_with_violation']} at plus ten percent.",
+    f"Our plan never has more total violations than the rule, has far fewer late returns, and from plus ten percent on it's late for about half as many minutes. But because it packs routes tighter, more days have at least one late stop: {_S11[1]['scenarios_with_violation']} against {_S11[0]['scenarios_with_violation']} at plus ten percent.",
 ], 3)
 
 slide(ANNABELLE, "Recommendation", f"""
@@ -382,18 +387,18 @@ slide(ANNABELLE, "Recommendation", f"""
 <div><h3>Recommend</h3><p class="big">Adopt the researched method</p><p>Solomon I1 + local search + ruin and recreate, with the no-self-crossing rule. Evidence: one 45-customer development day (the held-out case has 60).</p></div>
 <div><h3>Expected benefit</h3><p class="big">{MED_SAVE:,.0f} fewer driving minutes a day</p><p>{MED_PCT:.0f}% less planned driving ({f(R_MED['total_travel_time'])} → {f(X_MED['total_travel_time'])} min) with {int(R_MED['vehicles_used']) - int(X_MED['vehicles_used'])} fewer vehicles ({R_MED['vehicles_used']} → {X_MED['vehicles_used']}); about {SR['travel_mean'] - SX['travel_mean']:,.0f} fewer minutes on an average uncertain day.</p></div>
 <div><h3>Tradeoff accepted</h3><p>About {_MED_T:.0f} s of computing instead of milliseconds. Tighter routes, so slightly more days with at least one late stop ({SX['scenarios_with_violation']} vs {SR['scenarios_with_violation']} of 30; {_S11[1]['scenarios_with_violation']} vs {_S11[0]['scenarios_with_violation']} at +10% congestion).</p></div>
-<div><h3>Would change if…</h3><p>a day is judged by whether <b>any</b> window is missed and traffic runs ≥ 10% above plan: then the rule has fewer bad days ({_S11[0]['scenarios_with_violation']} vs {_S11[1]['scenarios_with_violation']} of 30; {_S13[0]['scenarios_with_violation']} vs {_S13[1]['scenarios_with_violation']} at +30%), at about {_EXTRA:,.0f} more driving minutes a day. If zero missed windows is required, neither fixed plan qualifies; plan with buffered travel times or replan during the day.</p></div>
+<div><h3>Would change if…</h3><p>the operation judges a day <b>only</b> by whether any window is missed. Then the rule has fewer bad days at every traffic level we tested ({_BAD}), for about {_EXTRA_LO:,.0f}–{_EXTRA_HI:,.0f} more driving minutes a day. At plan, ours trades 1 extra bad day in 30 for about {round(_PER_DAY, -2):,.0f} fewer driving minutes. If zero missed windows is required, neither plan qualifies: plan with buffered travel times.</p></div>
 </div>""", [
     "Our recommendation is to adopt the researched method.",
-    f"The expected benefit on the 45-customer day is about {MED_SAVE:,.0f} fewer minutes of planned driving, {MED_PCT:.0f} percent, with three fewer trucks. With uncertain travel times it still saves about {SR['travel_mean'] - SX['travel_mean']:,.0f} minutes on an average day, with no more violations than the rule.",
-    "The tradeoff: it takes under a minute to compute instead of milliseconds, and because the routes are tighter, a few more days have at least one late stop.",
-    f"It would change if the operation judges a day only by whether any window is missed, and traffic runs ten percent or more above plan. Then the rule has fewer bad days, at about {_EXTRA:,.0f} more minutes of driving. And if zero missed windows is a must, neither fixed plan works, and the dispatcher should plan with buffered travel times.",
+    f"The expected benefit on the 45-customer day: about {MED_SAVE:,.0f} fewer minutes of driving, {MED_PCT:.0f} percent, with {int(R_MED['vehicles_used']) - int(X_MED['vehicles_used'])} fewer trucks, and about {SR['travel_mean'] - SX['travel_mean']:,.0f} fewer on an average uncertain day, with no more violations.",
+    f"The tradeoff: about {_MED_T:.0f} seconds of computing on 45 customers, under a minute on 60, instead of milliseconds. And because the routes are tighter, a few more days have at least one late stop.",
+    f"It would change if the operation judges a day only by whether any window is missed. Then the rule has fewer bad days at every traffic level we tried, but it costs about {_EXTRA_LO:,.0f} to {_EXTRA_HI:,.0f} more driving minutes every day. At planned traffic, our plan trades one extra bad day in thirty for about {round(_PER_DAY, -2):,.0f} fewer driving minutes, so the rule wins only if a bad day is worth more than that. And if zero missed windows is a must, neither fixed plan works, and the dispatcher should plan with buffered travel times.",
 ], 3, "rec")
 
 slide(ZACC, "Limitations, and thank you", f"""
 <div class="two">
 <div><h3>Limitations</h3><ul>
-<li>A heuristic with no proof of optimality. The four chains on the large case end between {min(_CHAINS_L):,.1f} and {max(_CHAINS_L):,.1f} min; on medium our default seed stops at {f(X_MED['total_travel_time'], 3)}, and we know a plan at 1,070.565.</li>
+<li>A heuristic with no proof of optimality. The four chains on the large case end between {min(_CHAINS_L):,.1f} and {max(_CHAINS_L):,.1f} min; on medium our default seed stops at {f(X_MED['total_travel_time'], 3)}; our prototype found a crossing-free plan at 1,070.565.</li>
 <li>It plans for exact travel times with no slack, which is why heavier congestion is what would change the recommendation.</li>
 <li>It minimizes travel only; fewer vehicles is a side effect, not a target.</li>
 <li>The evidence is four synthetic instances from one generator, plus one infeasible edge case.</li>
@@ -404,7 +409,7 @@ pixi run reproduce
 pixi run solve &lt;input_dir&gt; &lt;output_dir&gt;</pre>
 <p class="small">The README has method details, seeds, stopping rules, and sources. Built with Claude Code (agentic coding); every component was reviewed by the team.</p>
 <p class="names">Sadie Crawford · Zacc Gleason · Annabelle Kemp</p></div></div>""", [
-    f"Finally, our limitations. It's a heuristic, so there's no optimality proof. On the large case the four chains end between {min(_CHAINS_L):,.0f} and {max(_CHAINS_L):,.0f} minutes. On the medium case our default seed stops at 1,071.159, and we know a plan that's 0.6 of a minute better. It also plans with no slack, which is exactly why heavier traffic is what would change our recommendation.",
+    f"Finally, our limitations. It's a heuristic, so there's no optimality proof. On the medium case our default seed stops at 1,071.159, and our prototype found a plan about half a minute better. It also plans with no slack, which is exactly why heavier traffic is what would change our recommendation.",
     "Everything regenerates with pixi run reproduce, and the README documents each method, its seed, its stopping rule, and its sources. Thank you.",
 ], 3)
 
@@ -413,8 +418,8 @@ pixi run solve &lt;input_dir&gt; &lt;output_dir&gt;</pre>
 
 CSS = """
 :root{--ink:#16181d;--muted:#5b5f68;--line:#e3e1dc;--bg:#f6f5f2;--paper:#ffffff;--accent:#9e1b32;--blue:#2a78d6;--orange:#eb6834;--soft:#f3e7e9}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#eceae5;--muted:#a9a69e;--line:#34363c;--bg:#101114;--paper:#1a1b1f;--accent:#e0566f;--soft:#2a1d21}}
-:root[data-theme="dark"]{--ink:#eceae5;--muted:#a9a69e;--line:#34363c;--bg:#101114;--paper:#1a1b1f;--accent:#e0566f;--soft:#2a1d21}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#eceae5;--muted:#a9a69e;--line:#34363c;--bg:#101114;--paper:#1a1b1f;--accent:#e0566f;--soft:#2a1d21;--blue:#5a9be8}}
+:root[data-theme="dark"]{--ink:#eceae5;--muted:#a9a69e;--line:#34363c;--bg:#101114;--paper:#1a1b1f;--accent:#e0566f;--soft:#2a1d21;--blue:#5a9be8}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Inter","Segoe UI",system-ui,sans-serif}
 """
 
@@ -434,9 +439,9 @@ table{border-collapse:collapse;width:100%;font-size:.8em;margin:.2em 0 .5em}th,t
 td b{color:var(--blue)}
 .callout{background:var(--soft);border-left:4px solid var(--accent);padding:.6em .9em;border-radius:4px;margin-top:.6em}
 .note{background:var(--soft);border-left:4px solid var(--accent);padding:.5em .8em;border-radius:4px;font-size:.78em;margin-top:.5em}
-.term{background:#16181d;color:#e8e6e1;padding:.8em 1em;border-radius:6px;font-family:"Cascadia Code",Consolas,monospace;font-size:.78em;white-space:pre-wrap}
+.term{background:#0b0c0e;border:1px solid var(--line);color:#e8e6e1;padding:.8em 1em;border-radius:6px;font-family:"Cascadia Code",Consolas,monospace;font-size:.78em;white-space:pre-wrap}
 .file{font-family:Consolas,monospace;font-size:.68em;color:var(--muted);margin-bottom:.2em}
-pre.code{margin:0 0 .3em;background:#16181d;color:#d9d7d2;border-radius:6px;padding:.5em .2em;font-family:"Cascadia Code",Consolas,monospace;font-size:.6em;line-height:1.35;overflow:hidden;flex-shrink:1;min-height:0}
+pre.code{margin:0 0 .3em;background:#0b0c0e;border:1px solid var(--line);color:#d9d7d2;border-radius:6px;padding:.5em .2em;font-family:"Cascadia Code",Consolas,monospace;font-size:.6em;line-height:1.35;overflow:hidden;flex-shrink:1;min-height:0}
 pre.code span{display:block;padding:0 .6em;white-space:pre}pre.code span.hl{background:rgba(224,86,111,.22)}pre.code i{display:inline-block;width:3em;color:#7d7b75;font-style:normal;user-select:none}
 img.wide{display:block;max-width:100%;max-height:44%;margin:.2em auto;object-fit:contain;border-radius:4px;background:#fff}img.wide.tall{max-height:88%}
 .hero{margin:auto 0}.hero h1{font-size:3em;line-height:1.05;margin:.1em 0 .3em;letter-spacing:-.02em}.hero h1 span{display:block;font-size:.5em;color:var(--muted);font-weight:500;margin-top:.3em}
@@ -460,7 +465,7 @@ function show(n){i=Math.max(0,Math.min(s.length-1,n));s.forEach((x,k)=>x.classLi
 document.querySelector('.progress').style.width=(100*(i+1)/s.length)+'%';try{history.replaceState(null,'','#'+(i+1))}catch(e){}}
 addEventListener('keydown',e=>{document.querySelector('.hint').classList.add('gone');if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){e.preventDefault();show(i+1)}
 if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();show(i-1)}if(e.key==='Home')show(0);if(e.key==='End')show(s.length-1)});
-addEventListener('click',e=>{if(e.target.closest('a'))return;show(e.clientX>innerWidth/3?i+1:i-1)});
+addEventListener('click',e=>{document.querySelector('.hint').classList.add('gone');if(e.target.closest('a'))return;show(e.clientX>innerWidth/3?i+1:i-1)});
 show((parseInt(location.hash.slice(1))||1)-1);
 """
 
@@ -475,7 +480,7 @@ def build_deck():
     _page = (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
              f'<title>Planning Delivery Routes</title><style>{DECK_CSS}</style></head><body><main class="deck">{"".join(_sections)}</main>'
              f'<div class="progress"></div><div class="hint">← → to move · print to PDF for handouts</div><script>{DECK_JS}</script></body></html>')
-    (OUT / "slides.html").write_text(_page, encoding="utf-8")
+    (OUT / "slides.html").write_text(_page, encoding="utf-8", newline="\n")
 
 
 SCRIPT_CSS = CSS + """
@@ -512,7 +517,7 @@ def build_script():
              f'Record the terminal parts in Git Bash (PowerShell 5.1 does not expand <code>~</code>). The demo (slide 3) runs the researched method on development_medium, which takes about 40 s; start it, keep talking, and trim the wait in editing. Annabelle runs the two <code>check</code> commands and the tests live on slide 8. '
              f'Lines marked <span class="cue">[SCREEN: …]</span> are on-screen actions, not spoken. Each member walks through a different agent-drafted component from the prototype video (prototype: loader, researched method, checker; final: Sadie the rule to beat on slide 5, Annabelle the crossing guard on slide 9, Zacc the fixed-plan execution on slide 13). Rehearse once with a timer; the plan leaves about a minute of margin under 15:00.</div>'
              f'{"".join(_blocks)}</main></body></html>')
-    (OUT / "script.html").write_text(_page, encoding="utf-8")
+    (OUT / "script.html").write_text(_page, encoding="utf-8", newline="\n")
     return _total
 
 

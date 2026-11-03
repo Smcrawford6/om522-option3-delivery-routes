@@ -70,7 +70,7 @@ def check_decision(data, decision):
             continue
         _vid = _route.get("vehicle_id")
         _visits = _route.get("visits")
-        if _vid not in _vehicles:
+        if not isinstance(_vid, str) or _vid not in _vehicles:
             _violations.append(f"route {_n}: vehicle '{_vid}' is not in vehicles.csv")
             continue
         if _vid in _used_vehicles:
@@ -83,7 +83,7 @@ def check_decision(data, decision):
         _time, _here, _load, _travel_r, _wait_r = _vehicle["shift_start"], _depot, 0, 0.0, 0.0
         _arrivals, _starts = [], []
         for _c in _visits:
-            if _c not in _customers:
+            if not isinstance(_c, str) or _c not in _customers:
                 _violations.append(f"vehicle {_vid}: visit '{_c}' is not in customers.csv")
                 break
             _served[_c] = _served.get(_c, 0) + 1

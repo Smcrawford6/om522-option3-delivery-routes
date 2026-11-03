@@ -55,7 +55,7 @@ Options for `solve`: `--method rule|researched` (default `researched`), `--seed`
 
 ## Method 1: the rule to beat (nearest feasible neighbor)
 
-Implemented exactly as `option-3-brief.pdf` states. Vehicles are taken in identifier order, and each one
+Implemented exactly as the option brief states. Vehicles are taken in identifier order, and each one
 leaves the depot at its shift start. It repeatedly drives to the nearest unserved customer by travel time
 from its current location, with ties going to the smaller customer identifier. That customer must fit
 the remaining capacity, allow service to start by its window end, and still allow a return to the depot
@@ -66,8 +66,8 @@ is still unserved after every vehicle has returned, the rule reports "no feasibl
 - **Stopping rule:** every vehicle has returned (or every customer is served).
 - **Randomization:** none.
 - **Details:** "identifier order" is string order of the identifiers (the class convention; the supplied
-  IDs are zero-padded, so it equals numeric order). Window and shift ends are met within 1e-9 min, well
-  inside the instructor's 1e-8 tolerance.
+  IDs are zero-padded, so it equals numeric order). Window and shift ends are met within the shared
+  1e-9 min tolerance in `core.py`, well inside the instructor's 1e-8.
 - **Limitations:** the rule is greedy and myopic. It never revisits a choice, so it often drives far to
   catch a closing window and leaves stragglers for extra vehicles. It also ignores the team's
   no-self-crossing rule (7 of its routes cross themselves on `development_large`, 8 crossings in all).
@@ -85,8 +85,8 @@ Granular neighbor lists follow Toth & Vigo (2003, *INFORMS Journal on Computing*
 **Why it fits.** Time windows are what make this decision hard. I1 builds routes by choosing, at every
 step, the customer and position that add the least travel and push later stops back the least. It
 checks every window as it inserts. The local search and ruin-and-recreate stages then fix the poor early
-choices a greedy construction cannot revisit. Every accepted move or iteration is re-checked, so the
-current solution is always feasible.
+choices a greedy construction cannot revisit. Every local-search move and every ruin-and-recreate
+result is checked before it is accepted, so the current solution is always feasible.
 
 **Representation.** One list of customer nodes per vehicle (`routes[k]`); the depot at each end is
 implicit. For each route the search caches its load, travel, service starts, and *latest feasible
@@ -136,10 +136,10 @@ serve every customer.
 
 **Known limitations.** It is a heuristic with no optimality proof. On the 120-customer instance its four
 chains end between 2,155.9 and 2,175.0 min. On `development_medium` the default seed stops at 1,071.159,
-and we know a feasible crossing-free plan at 1,070.565. It minimizes travel only, so vehicles used is not
+and our prototype found a feasible crossing-free plan at 1,070.565. It minimizes travel only, so vehicles used is not
 targeted directly (it falls anyway). It plans for exact travel times and builds in no slack. Runtime grows
-with size: about 40 s at 45 customers, 60–90 s on our 60-customer test copies, and about 90 s at 120 on
-our laptop.
+with size: about 30–40 s at 45 customers, 40–60 s on our 60-customer test copies, and about 85–90 s
+at 120 on our laptop.
 
 **The crossing rule and the data.** The data dictionary says coordinates are for maps and plots only.
 Our rule is a choice about how a driver's route may look on that map. On every supplied instance travel
@@ -169,10 +169,10 @@ limit; the researched method uses its defaults above.
 
 | Instance | Customers | Rule travel (min) | Researched travel (min) | Saving | Vehicles rule → researched | Self-crossings rule / researched | Researched time (s) |
 | --- | ---: | ---: | ---: | ---: | --- | --- | ---: |
-| hand_checkable | 6 | 352.417 | 329.670 | 6.5% | 2 → 2 | 0 / 0 | ~5 |
-| development_small | 15 | 620.581 | 483.044 | 22.2% | 5 → 4 | 1 / 0 | ~17 |
-| development_medium | 45 | 1683.397 | 1071.159 | 36.4% | 11 → 8 | 0 / 0 | ~40 |
-| development_large | 120 | 3523.223 | 2155.902 | 38.8% | 25 → 20 | 8 / 0 | ~91 |
+| hand_checkable | 6 | 352.417 | 329.670 | 6.5% | 2 → 2 | 0 / 0 | ~4 |
+| development_small | 15 | 620.581 | 483.044 | 22.2% | 5 → 4 | 1 / 0 | ~10 |
+| development_medium | 45 | 1683.397 | 1071.159 | 36.4% | 11 → 8 | 0 / 0 | ~30 |
+| development_large | 120 | 3523.223 | 2155.902 | 38.8% | 25 → 20 | 8 / 0 | ~85 |
 | edge_case | 10 | no feasible decision found | no feasible decision found | | | | <0.1 |
 
 Exact run times are in `results/comparison.md`. Both methods pass the checker on every instance. The
@@ -224,14 +224,18 @@ congestion.
   uses 3 fewer vehicles (8 instead of 11). Under the 30 travel-time scenarios it keeps that saving: 593
   min less realized travel on average. It has the same number of violations (12 vs 12), no late returns,
   and fewer minutes late. The evidence comes from one 45-customer day; the held-out case has 60.
-- **Tradeoff accepted:** about 40 s of computing instead of milliseconds. Its routes are also tighter,
+- **Tradeoff accepted:** about 30–40 s of computing (about a minute at 60 customers) instead of
+  milliseconds. Its routes are also tighter,
   so slightly more days have at least one late service: 7 vs 6 of 30 at planned traffic, and 12 vs 8 at
   +10%.
-- **The recommendation would change** if the operation judges a day by whether *any* window is missed
-  (not by minutes late or late returns) and traffic runs about 10% or more above plan. Then the rule has
-  fewer bad days (8 vs 12 of 30 at +10%, 23 vs 28 at +30%), at about 650 more driving minutes a day. If
-  zero missed windows is a hard requirement, neither fixed plan qualifies even at planned traffic (6–7
-  bad days of 30). The dispatcher should then plan with buffered travel times or replan during the day.
+- **The recommendation would change** if the operation judges a day *only* by whether any window is
+  missed (not by minutes late or late returns). Then the rule has fewer bad days at every traffic level
+  we tested: 6 vs 7 of 30 at plan, 8 vs 12 at +10%, 19 vs 20 at +20%, and 23 vs 28 at +30%. It pays for
+  that with about 590–770 more driving minutes a day. At planned traffic the researched plan trades one
+  extra bad day in 30 for about 17,800 fewer driving minutes over those 30 days. So the rule is
+  preferred only if avoiding one missed-window day is worth more than that. If zero missed windows is a
+  hard requirement, neither fixed plan qualifies even at planned traffic, and the dispatcher should plan
+  with buffered travel times or replan during the day.
 
 ## Changes since the prototype
 
@@ -243,8 +247,10 @@ dropped numba and polars. We made four changes:
 - The search has four seeded chains and insertion noise, because one chain was sensitive to its seed.
 - We added the crossing guard after ruin and recreate: a 60-customer test copy showed that removals
   could leave a route crossing itself.
-- The method now falls back if no crossing-free start fits the fleet.
-- The safety cap is now 300 s.
+- The method now falls back if no crossing-free start fits the fleet. A valid instance then always
+  gets a decision even when our added rule cannot be met, which the brief does not require.
+- The safety cap is now 300 s, so even a slower grading computer finishes well inside the 10-minute
+  limit, including loading and writing.
 
 The rule to beat is unchanged.
 

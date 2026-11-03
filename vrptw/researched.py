@@ -17,9 +17,9 @@ Three stages, each from the reading named in the brief:
    Several independent chains start from the best step-2 solution, and the
    best result over all chains is returned.
 
-Feasibility (capacity, windows, shift end, and the team's rule that a route
-never crosses itself) is checked after every move, so the current solution
-is always feasible.  The search stops after a fixed number of ruin and
+Every local-search move and every ruin-and-recreate result is checked
+(capacity, windows, shift end, and the team's rule that a route never crosses
+itself) before it is accepted, so the current solution is always feasible.  The search stops after a fixed number of ruin and
 recreate iterations per chain; the time limit is only a safety cap.  Chain c
 draws from random.Random(100 * seed + c), so a rerun reproduces the result.
 """
@@ -472,7 +472,7 @@ def anneal(search, routes, cost, iterations, rng, deadline, log=None):
             log(f"    iteration {_it}: current {_current_cost:.3f}, best {_best_cost:.3f}")
     return _best_routes, _best_cost, {"iterations_run": _done, "best_iteration": _best_iteration,
                                       "best_cost": _best_cost, "stopping_rule": _stop,
-                                      "rejected_for_crossing": _rejected}
+                                      "rejected_infeasible": _rejected}
 
 
 def solve(inst, iterations=DEFAULT_ITERATIONS, chains=DEFAULT_CHAINS, seed=DEFAULT_SEED,
@@ -505,9 +505,11 @@ def solve(inst, iterations=DEFAULT_ITERATIONS, chains=DEFAULT_CHAINS, seed=DEFAU
             _starts.append(dict(_record, constructed=_built, after_local_search=search.total()))
             if search.total() < _best_cost - EPS:
                 _best_routes, _best_cost = [r[:] for r in search.routes], search.total()
-        if _best_routes is None and not _no_cross:
+        if _best_routes is None:
             _rule = nearest_feasible_neighbor(inst)
-            if _rule is not None:
+            # The rule's plan is a valid start under the crossing rule only if
+            # none of its routes crosses itself.
+            if _rule is not None and (not _no_cross or not any(route_crosses(r, inst.xy) for r in _rule.values())):
                 search.set_routes([_rule.get(k, []) for k in range(inst.m)])
                 search.local_search()
                 _best_routes, _best_cost = [r[:] for r in search.routes], search.total()
