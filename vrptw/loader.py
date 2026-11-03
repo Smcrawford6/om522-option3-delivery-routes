@@ -134,6 +134,11 @@ def load_instance(directory):
                 )
         if _row["travel_time"] < 0:
             raise InputError(f"travel_times.csv, column 'travel_time', row {_number}: must not be negative")
+        if (_row["from_id"], _row["to_id"]) in _times:
+            raise InputError(
+                f"travel_times.csv, columns 'from_id'/'to_id', row {_number}: "
+                f"{_row['from_id']} -> {_row['to_id']} appears more than once"
+            )
         _times[(_row["from_id"], _row["to_id"])] = _row["travel_time"]
     for _a in _nodes:
         for _b in _nodes:

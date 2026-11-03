@@ -69,6 +69,8 @@ def compare():
             else:
                 with open(_path, "w", encoding="utf-8") as _f:
                     json.dump(decision, _f, indent=2)
+                with open(_path.parent / "run_info.json", "w", encoding="utf-8") as _f:
+                    json.dump(dict(info, computation_time_s=seconds), _f, indent=2)
                 report = check_decision(data, decision)
                 _m = report["measures"]
                 _row.update(status="feasible", checker="feasible" if report["feasible"] else "INFEASIBLE",
@@ -360,23 +362,28 @@ def _write_stress_md(summary):
 
 
 def _plot_stress(rows):
-    fig, axes = plt.subplots(2, 1, figsize=(10, 6.4), sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(10, 8.4), sharex=True, gridspec_kw={"height_ratios": [3, 1.3, 2]})
     _x = list(range(1, SCENARIOS + 1))
     for _j, _method in enumerate(METHODS):
         _mine = [r for r in rows if r["method"] == _method]
         _label = METHODS[_method].split(" (")[0]
         axes[0].plot(_x, [r["total_travel_time"] for r in _mine], color=COLOR[_method], linewidth=2,
                      marker="o", markersize=5, label=_label)
-        axes[1].bar([x + (_j - 0.5) * 0.4 for x in _x], [r["violations"] for r in _mine], width=0.38,
+        axes[1].step(_x, [r["vehicles_used"] for r in _mine], where="mid", color=COLOR[_method], linewidth=2,
+                     label=_label)
+        axes[2].bar([x + (_j - 0.5) * 0.4 for x in _x], [r["violations"] for r in _mine], width=0.38,
                     color=COLOR[_method], label=_label, edgecolor="white", linewidth=1)
     for ax in axes:
         _style(ax)
     axes[0].set_title("Realized total travel time (min) of each fixed plan", fontsize=11, color=INK, loc="left")
-    axes[1].set_title("Constraint violations (late service starts + late returns)", fontsize=11, color=INK, loc="left")
+    axes[1].set_title("Vehicles used, secondary measure (fixed plans, so constant)", fontsize=11, color=INK, loc="left")
+    axes[1].set_ylim(0, max(r["vehicles_used"] for r in rows) + 3)
+    axes[2].set_title("Constraint violations (late service starts + late returns)", fontsize=11, color=INK, loc="left")
     axes[0].legend(frameon=False, fontsize=9)
-    axes[1].set_xlabel("Scenario", color=MUTED)
-    axes[1].set_xticks(_x)
-    axes[1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+    axes[2].set_xlabel("Scenario", color=MUTED)
+    axes[2].set_xticks(_x)
+    for ax in axes[1:]:
+        ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
     fig.tight_layout()
     fig.savefig(RESULTS / "stress" / "stress_per_scenario.png", dpi=160)
     plt.close(fig)

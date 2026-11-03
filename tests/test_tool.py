@@ -149,7 +149,7 @@ def test_researched_is_reproducible():
     assert first == second
 
 
-def test_reordered_rows_and_renamed_ids_give_same_rule_travel(tmp_path):
+def test_reordered_rows_give_same_rule_travel(tmp_path):
     """Identifiers are matched by value, never by row position."""
     copy = tmp_path / "instance"
     shutil.copytree(ROOT / "development_small", copy)
@@ -179,3 +179,78 @@ def test_solve_command_writes_decision_and_summary(tmp_path):
     assert (tmp_path / "summary.md").exists()
     check = run_cli("check", ROOT / "hand_checkable", tmp_path / "decision.json")
     assert check.returncode == 0 and "FEASIBLE" in check.stdout
+
+
+def make_proxy(tmp_path, size=60, seed=3):
+    """A held-out-sized instance: customers sampled from development_large,
+    every identifier renamed, so nothing depends on the supplied files."""
+    src = ROOT / "development_large"
+    rng = random.Random(seed)
+    with open(src / "customers.csv", newline="") as f:
+        customers = list(csv.DictReader(f))
+    chosen = rng.sample(customers, size)
+    rename = {c["customer_id"]: f"STOP-{i:03d}" for i, c in enumerate(chosen)}
+    rename["DEPOT"] = "DEPOT"
+    out = tmp_path / "proxy"
+    out.mkdir()
+    shutil.copy(src / "depots.csv", out / "depots.csv")
+    with open(src / "vehicles.csv", newline="") as f:
+        vehicles = list(csv.DictReader(f))[:24]
+    with open(out / "vehicles.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(vehicles[0]))
+        writer.writeheader()
+        writer.writerows(dict(v, vehicle_id=f"TRUCK{i:02d}") for i, v in enumerate(vehicles))
+    with open(out / "customers.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(chosen[0]))
+        writer.writeheader()
+        writer.writerows(dict(c, customer_id=rename[c["customer_id"]]) for c in chosen)
+    with open(src / "travel_times.csv", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r["from_id"] in rename and r["to_id"] in rename]
+    with open(out / "travel_times.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["from_id", "to_id", "travel_time"])
+        writer.writeheader()
+        writer.writerows(dict(r, from_id=rename[r["from_id"]], to_id=rename[r["to_id"]]) for r in rows)
+    return out
+
+
+@pytest.mark.parametrize("seed", [2, 3])
+def test_researched_never_crosses_on_held_out_sized_proxy(tmp_path, seed):
+    """Ruin can shortcut a route into a crossing; the search must reject it."""
+    data = load_instance(make_proxy(tmp_path, seed=seed))
+    inst = Instance(data)
+    routes, info = researched.solve(inst, iterations=300, chains=1)
+    report = check_decision(data, to_decision(routes, inst))
+    assert report["feasible"] and report["measures"]["self_crossings"] == 0
+    assert info["crossing_rule"] == "enforced"
+    rule = check_decision(data, to_decision(nearest_feasible_neighbor(inst), inst))
+    assert report["measures"]["total_travel_time"] < rule["measures"]["total_travel_time"] - 0.001
+
+
+@pytest.mark.parametrize("text, accepted", [("7", True), ("7.0", True), ("7.5", False)])
+def test_integer_columns_accept_whole_numbers_only(tmp_path, text, accepted):
+    copy = tmp_path / "instance"
+    shutil.copytree(ROOT / "hand_checkable", copy)
+    with open(copy / "customers.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
+    rows[0]["demand"] = text
+    with open(copy / "customers.csv", "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    if accepted:
+        assert load_instance(copy)["customers"]["C001"]["demand"] == 7
+    else:
+        with pytest.raises(InputError, match="customers.csv.*demand.*row 2"):
+            load_instance(copy)
+
+
+def test_malformed_input_removes_stale_decision(tmp_path):
+    copy = tmp_path / "instance"
+    shutil.copytree(ROOT / "hand_checkable", copy)
+    (copy / "vehicles.csv").unlink()
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "decision.json").write_text("{}")
+    result = run_cli("solve", copy, out)
+    assert result.returncode != 0 and "vehicles.csv" in result.stderr
+    assert not (out / "decision.json").exists()

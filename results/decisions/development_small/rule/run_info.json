@@ -1,0 +1,6 @@
+{
+  "method": "rule to beat (nearest feasible neighbor)",
+  "stopping_rule": "all vehicles returned",
+  "status": "feasible",
+  "computation_time_s": 0.0001247000000148546
+}

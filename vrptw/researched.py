@@ -30,11 +30,12 @@ import random
 import time
 
 from .core import EPS, route_cost, route_crosses, schedule
+from .rule import nearest_feasible_neighbor
 
 DEFAULT_ITERATIONS = 2000  # ruin-and-recreate iterations per chain
 DEFAULT_CHAINS = 4
 DEFAULT_SEED = 522
-DEFAULT_TIME_LIMIT = 480.0  # seconds; the instructor allows 10 minutes in total
+DEFAULT_TIME_LIMIT = 300.0  # seconds; the instructor allows 10 minutes in total
 NEIGHBORS = 12
 START_WORSE = 0.005  # a result this much worse is accepted half the time at the start
 
@@ -50,8 +51,9 @@ I1_GRID = [
 class RouteSearch:
     """Holds one solution (a route per vehicle) and the moves that change it."""
 
-    def __init__(self, inst):
+    def __init__(self, inst, no_cross=True):
         self.inst = inst
+        self.no_cross = no_cross  # the team's rule: a route may not cross itself
         self.routes = [[] for _ in range(inst.m)]
         self.load = [0] * inst.m
         self.cost = [0.0] * inst.m
@@ -76,8 +78,12 @@ class RouteSearch:
         self.cost[k] = route_cost(_r, inst.t) if _r else 0.0
         for _p, _c in enumerate(_r):
             self.route_of[_c], self.pos_of[_c] = k, _p
-        _sched = schedule(_r, k, inst) if _r else ([], [], inst.shift_start[k])
-        self.starts[k] = _sched[1]
+        _starts, _time, _prev = [], inst.shift_start[k], 0
+        for _c in _r:  # service starts, recorded even if a window is broken
+            _arrive = _time + inst.t[_prev][_c]
+            _starts.append(max(_arrive, inst.early[_c]))
+            _time, _prev = _starts[-1] + inst.service[_c], _c
+        self.starts[k] = _starts
         # latest[p]: latest service start at position p that keeps the rest
         # of the route feasible (used for O(1) insertion checks).
         _latest = [0.0] * len(_r)
@@ -98,12 +104,15 @@ class RouteSearch:
     def total(self):
         return sum(self.cost)
 
+    def crosses(self, route):
+        return self.no_cross and route_crosses(route, self.inst.xy)
+
     def feasible(self, route, k):
         if not route:
             return True
         if sum(self.inst.demand[c] for c in route) > self.inst.capacity[k]:
             return False
-        return schedule(route, k, self.inst) is not None and not route_crosses(route, self.inst.xy)
+        return schedule(route, k, self.inst) is not None and not self.crosses(route)
 
     # --- insertion (construction and recreate) ---------------------------
 
@@ -143,7 +152,7 @@ class RouteSearch:
 
     def crossing_free_insert(self, u, k, q):
         _r = self.routes[k]
-        return not route_crosses(_r[:q] + [u] + _r[q:], self.inst.xy)
+        return not self.crosses(_r[:q] + [u] + _r[q:])
 
     def insert(self, u, k, q):
         self.routes[k].insert(q, u)
@@ -157,7 +166,7 @@ class RouteSearch:
         for _r, _k in ((r1, k1), (r2, k2)) if k2 is not None else ((r1, k1),):
             if _r and (sum(inst.demand[c] for c in _r) > inst.capacity[_k] or schedule(_r, _k, inst) is None):
                 return False
-        if route_crosses(r1, inst.xy) or (k2 is not None and route_crosses(r2, inst.xy)):
+        if self.crosses(r1) or (k2 is not None and self.crosses(r2)):
             return False
         self.routes[k1] = r1
         self.refresh(k1)
@@ -265,9 +274,9 @@ class RouteSearch:
 
 # --- construction: Solomon I1 ------------------------------------------------
 
-def solomon_i1(inst, alpha1, lam, seed_rule):
+def solomon_i1(inst, alpha1, lam, seed_rule, no_cross=True):
     """Sequential I1 insertion; returns routes or None if vehicles run out."""
-    search = RouteSearch(inst)
+    search = RouteSearch(inst, no_cross)
     _t = inst.t
     _unrouted = set(range(1, inst.n + 1))
     for _k in range(inst.m):
@@ -345,7 +354,7 @@ def ruin(search, rng, count):
             _ranked.remove(c)
             _removed.append(c)
     else:  # related (Shaw) removal: close in space, time, and demand
-        _tmax = max(max(row) for row in _t) or 1.0
+        _tmax = inst.tmax or 1.0
         _horizon = (max(inst.late) - min(inst.early[1:])) or 1.0
         _qmax = max(inst.demand) or 1
         _start = {c: search.starts[search.route_of[c]][search.pos_of[c]] for c in _routed}
@@ -356,10 +365,20 @@ def ruin(search, rng, count):
             _left.sort(key=lambda c: (9 * _t[_ref][c] / _tmax + 3 * abs(_start[_ref] - _start[c]) / _horizon
                                       + 2 * abs(inst.demand[_ref] - inst.demand[c]) / _qmax, c))
             _removed.append(_left.pop(int(len(_left) * rng.random() ** 6)))
-    _changed = set(search.route_of[c] for c in _removed)
+    _changed = set()
+    _kept = []
     for c in _removed:
-        search.routes[search.route_of[c]].remove(c)
+        _k = search.route_of[c]
+        _rest = [x for x in search.routes[_k] if x != c]
+        # With a travel table that breaks the triangle inequality, skipping a
+        # stop can make later stops later; such a removal is not made.
+        if _rest and schedule(_rest, _k, inst) is None:
+            continue
+        search.routes[_k] = _rest
         search.route_of[c] = -1
+        _changed.add(_k)
+        _kept.append(c)
+    _removed = _kept
     for _k in _changed:
         search.refresh(_k)
     return _removed
@@ -382,7 +401,7 @@ def recreate(search, removed, rng):
     inst = search.inst
     _regret_rule = rng.random() < 0.5
     # Noise: each insertion cost is perturbed by up to 2.5% of the longest trip.
-    _noise = 0.025 * max(max(row) for row in inst.t) if rng.random() < 0.5 else 0.0
+    _noise = 0.025 * inst.tmax if rng.random() < 0.5 else 0.0
     _pending = sorted(removed)
     _active = [k for k in range(inst.m) if search.routes[k]]
     _best = {u: {k: _best_in_route(search, u, k) for k in _active} for u in _pending}
@@ -419,11 +438,11 @@ def anneal(search, routes, cost, iterations, rng, deadline, log=None):
     inst = search.inst
     _best_routes, _best_cost = routes, cost
     _current_routes, _current_cost = routes, cost
-    _temperature = START_WORSE * cost / math.log(2)
+    _temperature = max(START_WORSE * cost / math.log(2), 1e-9)
     _cooling = 0.01 ** (1.0 / max(iterations, 1))  # ends at 1% of the start temperature
     _low = min(4, inst.n)
     _high = max(_low, min(30, int(0.3 * inst.n)))
-    _stop, _best_iteration, _done = "iteration count", 0, 0
+    _stop, _best_iteration, _done, _rejected = "iteration count", 0, 0, 0
     for _it in range(1, iterations + 1):
         if time.perf_counter() > deadline:
             _stop = "time limit (safety cap)"
@@ -433,6 +452,15 @@ def anneal(search, routes, cost, iterations, rng, deadline, log=None):
         _removed = ruin(search, rng, rng.randint(_low, _high))
         if recreate(search, _removed, rng):
             search.local_search(dirty=search.touched)
+            # Removing stops shortcuts a route, and the shortcut can cross
+            # another leg of that route.  Local search uncrosses it when the
+            # windows allow; otherwise the candidate is rejected.  The same
+            # full check guards capacity, windows, and shift ends.
+            if not all(search.feasible(r, k) for k, r in enumerate(search.routes)):
+                _rejected += 1
+                _temperature *= _cooling
+                _done = _it
+                continue
             _cost = search.total()
             if _cost < _current_cost - EPS or rng.random() < math.exp(-(_cost - _current_cost) / _temperature):
                 _current_routes, _current_cost = [r[:] for r in search.routes], _cost
@@ -443,7 +471,8 @@ def anneal(search, routes, cost, iterations, rng, deadline, log=None):
         if log and _it % 500 == 0:
             log(f"    iteration {_it}: current {_current_cost:.3f}, best {_best_cost:.3f}")
     return _best_routes, _best_cost, {"iterations_run": _done, "best_iteration": _best_iteration,
-                                      "best_cost": _best_cost, "stopping_rule": _stop}
+                                      "best_cost": _best_cost, "stopping_rule": _stop,
+                                      "rejected_for_crossing": _rejected}
 
 
 def solve(inst, iterations=DEFAULT_ITERATIONS, chains=DEFAULT_CHAINS, seed=DEFAULT_SEED,
@@ -451,24 +480,43 @@ def solve(inst, iterations=DEFAULT_ITERATIONS, chains=DEFAULT_CHAINS, seed=DEFAU
     """Run the researched method.  Returns (routes or None, run information)."""
     _clock = time.perf_counter()
     _deadline = _clock + time_limit
-    search = RouteSearch(inst)
+    if inst.n == 0:
+        return {}, {"method": "Solomon I1 + local search + ruin and recreate", "status": "feasible",
+                    "stopping_rule": "no customers", "seed": seed, "chains": chains,
+                    "iterations_per_chain": iterations, "time_limit_s": time_limit, "crossing_rule": "enforced",
+                    "seconds": time.perf_counter() - _clock}
 
     # Stages 1 and 2: every I1 start, improved by local search; keep the best.
+    # If no crossing-free start fits the fleet, the team's crossing rule is
+    # relaxed (and reported) rather than returning no decision; the rule to
+    # beat's plan is the last-resort start.
     _best_routes, _best_cost, _starts = None, math.inf, []
-    for _alpha1, _lam, _seed_rule in I1_GRID:
-        _routes = solomon_i1(inst, _alpha1, _lam, _seed_rule)
-        _record = {"alpha1": _alpha1, "lambda": _lam, "seed_rule": _seed_rule}
-        if _routes is None:
-            _starts.append(dict(_record, status="ran out of vehicles"))
-            continue
-        search.set_routes(_routes)
-        _built = search.total()
-        search.local_search()
-        _starts.append(dict(_record, constructed=_built, after_local_search=search.total()))
-        if search.total() < _best_cost - EPS:
-            _best_routes, _best_cost = [r[:] for r in search.routes], search.total()
+    for _no_cross in (True, False):
+        search = RouteSearch(inst, _no_cross)
+        for _alpha1, _lam, _seed_rule in I1_GRID:
+            _routes = solomon_i1(inst, _alpha1, _lam, _seed_rule, _no_cross)
+            _record = {"alpha1": _alpha1, "lambda": _lam, "seed_rule": _seed_rule, "no_cross": _no_cross}
+            if _routes is None:
+                _starts.append(dict(_record, status="ran out of vehicles"))
+                continue
+            search.set_routes(_routes)
+            _built = search.total()
+            search.local_search()
+            _starts.append(dict(_record, constructed=_built, after_local_search=search.total()))
+            if search.total() < _best_cost - EPS:
+                _best_routes, _best_cost = [r[:] for r in search.routes], search.total()
+        if _best_routes is None and not _no_cross:
+            _rule = nearest_feasible_neighbor(inst)
+            if _rule is not None:
+                search.set_routes([_rule.get(k, []) for k in range(inst.m)])
+                search.local_search()
+                _best_routes, _best_cost = [r[:] for r in search.routes], search.total()
+                _starts.append({"start": "rule to beat", "after_local_search": _best_cost})
+        if _best_routes is not None:
+            break
     _info = {"method": "Solomon I1 + local search + ruin and recreate", "seed": seed, "chains": chains,
-             "iterations_per_chain": iterations, "time_limit_s": time_limit, "starts": _starts}
+             "iterations_per_chain": iterations, "time_limit_s": time_limit, "starts": _starts,
+             "crossing_rule": "enforced" if search.no_cross else "relaxed: no crossing-free plan was found"}
     if _best_routes is None:
         _info.update(status="no feasible decision found", seconds=time.perf_counter() - _clock)
         return None, _info
@@ -486,6 +534,10 @@ def solve(inst, iterations=DEFAULT_ITERATIONS, chains=DEFAULT_CHAINS, seed=DEFAU
             log(f"  chain {_chain}: best {_cost:.3f}")
         if _cost < _best_cost - EPS:
             _best_routes, _best_cost = _routes, _cost
+    # Final guard: every returned route is re-verified; the best start is
+    # the fallback (it was built and improved under the same checks).
+    if not all(search.feasible(r, k) for k, r in enumerate(_best_routes)):
+        _best_routes, _best_cost = _start_routes, _start_cost
     _stops = set(c["stopping_rule"] for c in _chain_info)
     _info.update(status="feasible", chain_results=_chain_info, best_cost=_best_cost,
                  stopping_rule="time limit (safety cap)" if "time limit (safety cap)" in _stops else "iteration count",

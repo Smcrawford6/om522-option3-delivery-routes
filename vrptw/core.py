@@ -3,7 +3,8 @@
 The loader keys everything by identifier.  The methods evaluate millions of
 moves, so they work on integer positions instead: node 0 is the depot and
 nodes 1..n are customers in identifier order.  A route is a plain list of
-customer nodes; the depot at each end is implicit, as in the class TSP helper.
+customer nodes; the depot at each end is implicit (the same convention as the
+class TSP helper; no in-class code is reused).
 """
 
 EPS = 1e-9  # feasibility tolerance; the instructor's checker allows 1e-8
@@ -23,6 +24,7 @@ class Instance:
         self.xy = [data["locations"][i] for i in self.ids]
         _t = data["travel"]
         self.t = [[_t[(a, b)] for b in self.ids] for a in self.ids]
+        self.tmax = max(max(row) for row in self.t)
         # Vehicles in identifier order, as the rule to beat requires.
         self.vehicle_ids = sorted(data["vehicles"])
         _v = data["vehicles"]
@@ -96,7 +98,7 @@ def segments_cross(p1, p2, q1, q2):
 
 
 def route_crosses(route, xy):
-    """True when two legs of the drawn route depot -> ... -> depot meet.
+    """True when two legs of the drawn route depot -> ... -> depot cross.
 
     Legs that share a stop (consecutive legs, and the first and last legs,
     which share the depot) are allowed to touch at that stop.

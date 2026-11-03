@@ -2,17 +2,14 @@
 
 **Team:** Sadie Crawford, Zacc Gleason, Annabelle Kemp (OM 522, Fall 2026)
 
-Every morning a dispatcher at a single-depot delivery operation has to decide which vehicle serves each
-of the day's customers and the order of stops on each vehicle's route, before any driver leaves the
-yard. This tool makes that decision from the day's data files. It gives every used vehicle a timed
-route that serves each customer once, inside the customer's time window, within the vehicle's capacity
-and shift, and it reports the travel, waiting, and service consequences. We added one assumption
-beyond the brief: **a route may not cross itself** when drawn on the depot and customer coordinates. A
-driver should never cut back across their own earlier path. Two different routes may still cross. On
-every supplied instance the travel time equals the straight-line distance between the coordinates, so
-a self-crossing is a real detour and not just a messy map. The researched method enforces the rule as a
-hard constraint. The rule to beat is implemented exactly as the brief states it (the guide requires
-that), and its crossings are reported.
+Every morning a dispatcher at our single depot has to decide which truck takes each of the day's
+customers and the order in which it visits them, before any driver leaves the yard. Our tool reads
+that day's files and hands the dispatcher a timed route for every truck it uses, and it reports how much
+driving, waiting, and service that plan means. We added one assumption to the brief: **a route may not
+cross itself** when it is drawn on the depot and customer coordinates. A driver should not have to cut
+back across their own path, but two different trucks' routes may cross. The researched method treats
+this as a hard rule. The rule to beat is left exactly as the brief writes it, and its crossings are
+only reported.
 
 ## Quick start
 
@@ -24,7 +21,8 @@ pixi run solve <input_dir> <output_dir>             # THE GRADED COMMAND: resear
 pixi run rule  <input_dir> <output_dir>             # the rule to beat, same input/output contract
 pixi run check <input_dir> <output_dir>/decision.json   # independent checker
 pixi run test                                       # the automated tests
-pixi run reproduce                                  # regenerates every submitted table and figure
+pixi run reproduce                                  # regenerates every submitted table, figure, and the deck
+pixi run presentation                               # rebuilds only presentation/ from results/
 ```
 
 `solve` reads any instance directory in the published format and writes `decision.json` (the structure of
@@ -38,7 +36,7 @@ seed, stopping rule, and computation time) to the output directory. It never cha
 | Any other valid input | writes `decision.json` and the summary | 0 |
 
 Options for `solve`: `--method rule|researched` (default `researched`), `--seed` (522), `--chains` (4),
-`--iterations` per chain (2000), `--time-limit` safety cap in seconds (480), `--verbose`.
+`--iterations` per chain (2000), `--time-limit` safety cap in seconds (300), `--verbose`.
 
 ## Repository layout
 
@@ -50,9 +48,9 @@ Options for `solve`: `--method rule|researched` (default `researched`), `--seed`
 | `vrptw/researched.py` | Method 2, the researched method. |
 | `vrptw/checker.py` | Independent checker. Shares no code with either method. |
 | `vrptw/cli.py`, `vrptw/experiments.py` | Commands, deterministic comparison, stress test, and figures. |
-| `tests/test_tool.py` | The three required tests plus checker, loader, crossing, reproducibility, and relabeling tests. |
+| `tests/test_tool.py` | 21 tests: the three required ones plus loader, checker, crossing, reproducibility, row-order, and 60-customer held-out-sized tests. |
 | `results/` | Submitted decisions, comparison tables, figures, saved stress scenarios, and stress results. |
-| `presentation/` | Final-video slide deck and speaker script (HTML). |
+| `presentation/` | Final-video slide deck (`slides.html`, arrow keys) and speaker script (`script.html`), built by `build.py` from `results/` and the code. |
 | `hand_checkable/`, `development_*/`, `edge_case/`, `worked-example/`, `DATA_DICTIONARY.md`, `DATA_README.md` | The instructor's data package, unchanged. |
 
 ## Method 1: the rule to beat (nearest feasible neighbor)
@@ -67,9 +65,12 @@ is still unserved after every vehicle has returned, the rule reports "no feasibl
 - **Representation:** a list of customers per vehicle, in visiting order.
 - **Stopping rule:** every vehicle has returned (or every customer is served).
 - **Randomization:** none.
+- **Details:** "identifier order" is string order of the identifiers (the class convention; the supplied
+  IDs are zero-padded, so it equals numeric order). Window and shift ends are met within 1e-9 min, well
+  inside the instructor's 1e-8 tolerance.
 - **Limitations:** the rule is greedy and myopic. It never revisits a choice, so it often drives far to
   catch a closing window and leaves stragglers for extra vehicles. It also ignores the team's
-  no-self-crossing rule (8 crossings on `development_large`).
+  no-self-crossing rule (7 of its routes cross themselves on `development_large`, 8 crossings in all).
 - **Test:** it reproduces `worked-example/` exactly: every visit, arrival, service start, and return
   time, plus total travel 352.417 min, 2 vehicles, and 232.861 min of waiting.
 
@@ -84,7 +85,8 @@ Granular neighbor lists follow Toth & Vigo (2003, *INFORMS Journal on Computing*
 **Why it fits.** Time windows are what make this decision hard. I1 builds routes by choosing, at every
 step, the customer and position that add the least travel and push later stops back the least. It
 checks every window as it inserts. The local search and ruin-and-recreate stages then fix the poor early
-choices a greedy construction cannot revisit. Every move keeps the solution feasible.
+choices a greedy construction cannot revisit. Every accepted move or iteration is re-checked, so the
+current solution is always feasible.
 
 **Representation.** One list of customer nodes per vehicle (`routes[k]`); the depot at each end is
 implicit. For each route the search caches its load, travel, service starts, and *latest feasible
@@ -111,20 +113,40 @@ service start* at each position. The latest starts make a time-window check for 
    whole-short-route removal. It reinserts them by regret-2 or greedy insertion, with or without small
    noise, and may open an unused vehicle. Stage 2 then runs on the changed routes. The result is accepted
    by simulated annealing: the start temperature accepts a 0.5% worse result half the time, and it cools
-   geometrically to 1% of that. The best solution over all chains is returned.
+   geometrically to 1% of that. Before acceptance, every route is re-checked for capacity, windows, shift
+   end, and self-crossing. Removing a stop shortcuts a route, and the shortcut can cross another leg of
+   it; such a candidate is rejected. A removal that would break the rest of its route (possible when the
+   travel table breaks the triangle inequality) is not made. The best solution over all chains is
+   returned, and it is verified once more before it is written.
 
-**Stopping rule.** 4 chains × 2,000 ruin-and-recreate iterations, a fixed count. The 480-second time
-limit is only a safety cap and is never reached on the supplied instances. `summary.md` reports which
-rule stopped the run.
+No optimization solver is used (so there is no solver status to report), and no routing package is used.
+
+**Stopping rule.** 4 chains × 2,000 ruin-and-recreate iterations, a fixed count. The 300-second time
+limit is only a safety cap (checked between iterations) and is never reached on the supplied instances
+or on our 60-customer test copies. `summary.md` reports which rule stopped the run. A run that hits the
+cap would not be reproducible.
 
 **Randomization and seed.** Default seed 522. Chain *c* uses `random.Random(100·seed + c)`, so a rerun
 reproduces the decision exactly (tested).
 
-**Known limitations.** It is a heuristic with no optimality proof. Different seeds can end about 1%
-apart on the 120-customer instance. It minimizes travel only, so vehicles used is not targeted directly
-(it falls anyway). It plans for exact travel times and builds in no slack. If no crossing-free feasible
-plan exists, it reports none even when a crossing plan would exist. Runtime grows with size (about 40 s
-at 45 customers and about 2.5 min at 120 on our laptop).
+**Fallback.** If no crossing-free I1 start fits the fleet, the method repeats stages 1 and 2 without the
+crossing rule. If that also fails, it starts from the rule to beat's plan. `summary.md` then says the
+crossing rule was relaxed. It reports "no feasible decision found" only when neither I1 nor the rule can
+serve every customer.
+
+**Known limitations.** It is a heuristic with no optimality proof. On the 120-customer instance its four
+chains end between 2,155.9 and 2,175.0 min. On `development_medium` the default seed stops at 1,071.159,
+and we know a feasible crossing-free plan at 1,070.565. It minimizes travel only, so vehicles used is not
+targeted directly (it falls anyway). It plans for exact travel times and builds in no slack. Runtime grows
+with size: about 40 s at 45 customers, 60–90 s on our 60-customer test copies, and about 90 s at 120 on
+our laptop.
+
+**The crossing rule and the data.** The data dictionary says coordinates are for maps and plots only.
+Our rule is a choice about how a driver's route may look on that map. On every supplied instance travel
+time equals straight-line distance (within 0.0005 min), so removing a crossing also shortens the route
+when the windows allow it. With time windows the uncrossed order can be infeasible, so the rule can
+cost travel; we accept that. If a future data set's travel times were not distances, the rule would
+still be enforced, as a driver-facing preference rather than a travel saving.
 
 ## Independent checker
 
@@ -133,8 +155,12 @@ service start, return time, load, and measure from the visit lists. It uses iden
 timing and crossing geometry; it imports nothing from either method. It reports each violated
 constraint by vehicle or customer: customer missing or served twice, vehicle used twice or unknown,
 capacity, window, and shift end. It applies the instructor's 1e-8 tolerance at window and shift ends,
-flags reported times that disagree with its own, and counts self-crossings for the team constraint. A
-test confirms that the method's crossing test and the checker's agree on 400 random routes.
+flags reported times that disagree with its own, and counts self-crossings for the team constraint.
+Crossings are reported separately and do not make a plan infeasible, because the brief does not
+require them. **Crossing definition:** two non-adjacent legs of the same route (the first and last legs,
+which share the depot, count as adjacent) cross properly, overlap, or form a T; legs that only meet at
+a shared end point (two stops drawn at the same coordinates) do not count. A test confirms that the
+method's crossing test and the checker's, written separately, agree on 400 random routes.
 
 ## Deterministic comparison (`results/comparison.md`)
 
@@ -144,12 +170,13 @@ limit; the researched method uses its defaults above.
 | Instance | Customers | Rule travel (min) | Researched travel (min) | Saving | Vehicles rule → researched | Self-crossings rule / researched | Researched time (s) |
 | --- | ---: | ---: | ---: | ---: | --- | --- | ---: |
 | hand_checkable | 6 | 352.417 | 329.670 | 6.5% | 2 → 2 | 0 / 0 | ~5 |
-| development_small | 15 | 620.581 | 483.044 | 22.2% | 5 → 4 | 1 / 0 | ~14 |
+| development_small | 15 | 620.581 | 483.044 | 22.2% | 5 → 4 | 1 / 0 | ~17 |
 | development_medium | 45 | 1683.397 | 1071.159 | 36.4% | 11 → 8 | 0 / 0 | ~40 |
-| development_large | 120 | 3523.223 | 2153.904 | 38.9% | 25 → 19 | 8 / 0 | ~160 |
+| development_large | 120 | 3523.223 | 2155.902 | 38.8% | 25 → 20 | 8 / 0 | ~91 |
 | edge_case | 10 | no feasible decision found | no feasible decision found | | | | <0.1 |
 
-Both methods pass the checker on every instance. The rule runs in milliseconds. The gap widens with
+Exact run times are in `results/comparison.md`. Both methods pass the checker on every instance. The
+rule runs in milliseconds. The gap widens with
 size: on 6 customers the rule's greedy choices cost little, but on 45 and 120 customers they strand
 customers that need extra vehicles and long trips. The researched method's waiting time is sometimes
 higher (hand_checkable), because it trades waiting, which is free under the brief's measure, for
@@ -175,8 +202,9 @@ is best in general.
 | Violations in total (late services + late returns) | 12 (6 + 6) | 12 (12 + 0) |
 | Minutes late per scenario, mean | 2.1 | 1.7 |
 
-The per-scenario plot is `results/stress/stress_per_scenario.png`. Mean realized travel is slightly
-below planned travel for both plans because these 30 congestion draws average a little under 1.
+The per-scenario plot (`results/stress/stress_per_scenario.png`) shows realized travel, vehicles used
+(constant for a fixed plan), and violations. Mean realized travel is slightly below planned travel for
+both plans because these 30 congestion factors average 0.974.
 
 **Sensitivity** (`results/stress/sensitivity.md`): the same saved scenarios rescaled to heavier average
 congestion.
@@ -190,19 +218,40 @@ congestion.
 
 ## Recommendation
 
-**Adopt the researched method.** On the 45-customer development day it cuts planned travel by 612 min
-(36%) and uses 3 fewer vehicles (8 instead of 11). Under the 30 travel-time scenarios it keeps that
-saving: 593 min less realized travel on average. It has the same number of violations (12 vs 12), no
-late returns, and fewer minutes late. **The tradeoff accepted:** its routes are tighter, so with
-heavier congestion it has a slightly higher chance that a given day has at least one late service
-(7 vs 6 of 30 days at the planned level, 12 vs 8 at +10%). **The recommendation would change** if average
-congestion runs about 10% or more above the planning data *and* the dispatcher judges a day by whether
-any window is missed, rather than by total violations or travel. Then neither fixed plan is acceptable
-as is, and the plan should be rebuilt with buffered travel times or replanned during the day.
+**Adopt the researched method.**
+
+- **Expected benefit:** on the 45-customer development day it cuts planned travel by 612 min (36%) and
+  uses 3 fewer vehicles (8 instead of 11). Under the 30 travel-time scenarios it keeps that saving: 593
+  min less realized travel on average. It has the same number of violations (12 vs 12), no late returns,
+  and fewer minutes late. The evidence comes from one 45-customer day; the held-out case has 60.
+- **Tradeoff accepted:** about 40 s of computing instead of milliseconds. Its routes are also tighter,
+  so slightly more days have at least one late service: 7 vs 6 of 30 at planned traffic, and 12 vs 8 at
+  +10%.
+- **The recommendation would change** if the operation judges a day by whether *any* window is missed
+  (not by minutes late or late returns) and traffic runs about 10% or more above plan. Then the rule has
+  fewer bad days (8 vs 12 of 30 at +10%, 23 vs 28 at +30%), at about 650 more driving minutes a day. If
+  zero missed windows is a hard requirement, neither fixed plan qualifies even at planned traffic (6–7
+  bad days of 30). The dispatcher should then plan with buffered travel times or replan during the day.
+
+## Changes since the prototype
+
+The prototype (repository `om522-delivery-routing`) used the same family of researched method: Solomon
+I1, then local search, then large neighborhood search. For the final submission we rebuilt the code as
+one small plain-Python package in the class's style. We did this so each member can explain it, and
+dropped numba and polars. We made four changes:
+
+- The search has four seeded chains and insertion noise, because one chain was sensitive to its seed.
+- We added the crossing guard after ruin and recreate: a 60-customer test copy showed that removals
+  could leave a route crossing itself.
+- The method now falls back if no crossing-free start fits the fleet.
+- The safety cap is now 300 s.
+
+The rule to beat is unchanged.
 
 ## Tools used
 
 Claude Code (Anthropic), an agentic coding tool, researched the method and drafted the code, tests,
 README, and presentation; the team reviewed every component. We used Python 3.12, matplotlib, pytest,
-and Pixi. No code from the in-class notebooks was reused. No paid service, private account, or
-external system is needed to run or grade the tool.
+and Pixi. No code from the in-class notebooks was reused (the method follows the class's convention of
+an implicit depot at each end of a route). No paid service, private account, or external system is
+needed to run or grade the tool.

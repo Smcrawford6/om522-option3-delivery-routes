@@ -52,6 +52,8 @@ def write_summary(out, status, method_info, seconds, report=None):
     _lines = [f"# Run summary", "", f"- Status: {status}", f"- Method: {method_info.get('method')}",
               f"- Stopping rule: {method_info.get('stopping_rule', 'n/a')}",
               f"- Computation time: {seconds:.3f} s"]
+    if "crossing_rule" in method_info:
+        _lines.append(f"- No-self-crossing rule (team constraint): {method_info['crossing_rule']}")
     if "seed" in method_info:
         _lines.append(f"- Seed: {method_info['seed']} ({method_info['chains']} chains x "
                       f"{method_info['iterations_per_chain']} iterations, safety cap {method_info['time_limit_s']} s)")
@@ -68,14 +70,14 @@ def write_summary(out, status, method_info, seconds, report=None):
 
 
 def cmd_solve(args):
+    out = Path(args.output_dir)
+    (out / "decision.json").unlink(missing_ok=True)  # never leave a stale decision behind
     try:
         data = load_instance(args.input_dir)
     except InputError as error:
         print(f"input error: {error}", file=sys.stderr)
         return 2
-    out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "decision.json").unlink(missing_ok=True)  # never leave a stale decision behind
     _log = (lambda message: print(message, flush=True)) if args.verbose else None
     decision, info, seconds = run_method(data, args.method, args.iterations, args.chains, args.seed,
                                          args.time_limit, _log)

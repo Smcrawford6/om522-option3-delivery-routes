@@ -65,6 +65,9 @@ def check_decision(data, decision):
                 "routes": [], "measures": {}}
 
     for _n, _route in enumerate(_routes):
+        if not isinstance(_route, dict):
+            _violations.append(f"route {_n}: is not an object with vehicle_id and visits")
+            continue
         _vid = _route.get("vehicle_id")
         _visits = _route.get("visits")
         if _vid not in _vehicles:

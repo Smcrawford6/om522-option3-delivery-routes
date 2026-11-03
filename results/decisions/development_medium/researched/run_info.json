@@ -1,0 +1,150 @@
+{
+  "method": "Solomon I1 + local search + ruin and recreate",
+  "seed": 522,
+  "chains": 4,
+  "iterations_per_chain": 2000,
+  "time_limit_s": 300.0,
+  "starts": [
+    {
+      "alpha1": 0.0,
+      "lambda": 1.0,
+      "seed_rule": "farthest",
+      "no_cross": true,
+      "constructed": 1615.1009999999999,
+      "after_local_search": 1222.8239999999998
+    },
+    {
+      "alpha1": 0.5,
+      "lambda": 1.0,
+      "seed_rule": "farthest",
+      "no_cross": true,
+      "constructed": 1309.894,
+      "after_local_search": 1186.44
+    },
+    {
+      "alpha1": 1.0,
+      "lambda": 1.0,
+      "seed_rule": "farthest",
+      "no_cross": true,
+      "constructed": 1394.1499999999999,
+      "after_local_search": 1205.414
+    },
+    {
+      "alpha1": 0.0,
+      "lambda": 2.0,
+      "seed_rule": "farthest",
+      "no_cross": true,
+      "constructed": 1782.147,
+      "after_local_search": 1279.237
+    },
+    {
+      "alpha1": 0.5,
+      "lambda": 2.0,
+      "seed_rule": "farthest",
+      "no_cross": true,
+      "constructed": 1392.828,
+      "after_local_search": 1205.569
+    },
+    {
+      "alpha1": 1.0,
+      "lambda": 2.0,
+      "seed_rule": "farthest",
+      "no_cross": true,
+      "constructed": 1204.584,
+      "after_local_search": 1144.434
+    },
+    {
+      "alpha1": 0.0,
+      "lambda": 1.0,
+      "seed_rule": "earliest_deadline",
+      "no_cross": true,
+      "constructed": 1620.113,
+      "after_local_search": 1356.852
+    },
+    {
+      "alpha1": 0.5,
+      "lambda": 1.0,
+      "seed_rule": "earliest_deadline",
+      "no_cross": true,
+      "constructed": 1625.623,
+      "after_local_search": 1240.218
+    },
+    {
+      "alpha1": 1.0,
+      "lambda": 1.0,
+      "seed_rule": "earliest_deadline",
+      "no_cross": true,
+      "constructed": 1446.736,
+      "after_local_search": 1131.367
+    },
+    {
+      "alpha1": 0.0,
+      "lambda": 2.0,
+      "seed_rule": "earliest_deadline",
+      "no_cross": true,
+      "constructed": 1721.421,
+      "after_local_search": 1303.4470000000001
+    },
+    {
+      "alpha1": 0.5,
+      "lambda": 2.0,
+      "seed_rule": "earliest_deadline",
+      "no_cross": true,
+      "constructed": 1460.589,
+      "after_local_search": 1317.073
+    },
+    {
+      "alpha1": 1.0,
+      "lambda": 2.0,
+      "seed_rule": "earliest_deadline",
+      "no_cross": true,
+      "constructed": 1400.692,
+      "after_local_search": 1114.436
+    }
+  ],
+  "crossing_rule": "enforced",
+  "start_cost": 1114.436,
+  "status": "feasible",
+  "chain_results": [
+    {
+      "iterations_run": 2000,
+      "best_iteration": 130,
+      "best_cost": 1071.159,
+      "stopping_rule": "iteration count",
+      "rejected_for_crossing": 2,
+      "chain": 0,
+      "chain_seed": 52200
+    },
+    {
+      "iterations_run": 2000,
+      "best_iteration": 103,
+      "best_cost": 1071.159,
+      "stopping_rule": "iteration count",
+      "rejected_for_crossing": 2,
+      "chain": 1,
+      "chain_seed": 52201
+    },
+    {
+      "iterations_run": 2000,
+      "best_iteration": 151,
+      "best_cost": 1071.159,
+      "stopping_rule": "iteration count",
+      "rejected_for_crossing": 2,
+      "chain": 2,
+      "chain_seed": 52202
+    },
+    {
+      "iterations_run": 2000,
+      "best_iteration": 221,
+      "best_cost": 1071.159,
+      "stopping_rule": "iteration count",
+      "rejected_for_crossing": 4,
+      "chain": 3,
+      "chain_seed": 52203
+    }
+  ],
+  "best_cost": 1071.159,
+  "stopping_rule": "iteration count",
+  "seconds": 39.62187450000056,
+  "computation_time_s": 39.62189330000001
+}
