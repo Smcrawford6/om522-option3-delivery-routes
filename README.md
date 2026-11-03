@@ -2,14 +2,14 @@
 
 **Team:** Sadie Crawford, Zacc Gleason, Annabelle Kemp (OM 522, Fall 2026)
 
-Every morning a dispatcher at our single depot has to decide which truck takes each of the day's
-customers and the order in which it visits them, before any driver leaves the yard. Our tool reads
-that day's files and hands the dispatcher a timed route for every truck it uses, and it reports how much
-driving, waiting, and service that plan means. We added one assumption to the brief: **a route may not
-cross itself** when it is drawn on the depot and customer coordinates. A driver should not have to cut
-back across their own path, but two different trucks' routes may cross. The researched method treats
-this as a hard rule. The rule to beat is left exactly as the brief writes it, and its crossings are
-only reported.
+We built this tool for the dispatcher at a single-depot delivery company. Every morning, before anyone
+leaves the yard, the dispatcher has to decide which truck takes which customers and in what order each
+driver should visit them. The dispatcher runs one command on that day's files and gets back a timed route
+for every truck that's needed, along with how much driving, waiting, and service time the plan involves.
+We added one assumption that the brief doesn't ask for: a truck's route can't cross over itself on the
+map, because we don't think a driver should ever have to double back across their own path. Two
+different trucks' routes are still allowed to cross. Our researched method treats this as a hard rule.
+The rule to beat is kept exactly as the brief describes it, and its crossings are only reported.
 
 ## Quick start
 
