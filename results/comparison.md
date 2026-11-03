@@ -9,13 +9,13 @@
 | Instance | Customers | Method | Checker | Total travel (min) | Vehicles used | Waiting (min) | Self-crossings | Computation time (s) |
 | --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | hand_checkable | 6 | rule | feasible | 352.417 | 2 | 232.861 | 0 | 0.000 |
-| hand_checkable | 6 | researched | feasible | 329.670 | 2 | 328.798 | 0 | 3.964 |
+| hand_checkable | 6 | researched | feasible | 329.670 | 2 | 328.798 | 0 | 3.284 |
 | development_small | 15 | rule | feasible | 620.581 | 5 | 845.804 | 1 | 0.000 |
-| development_small | 15 | researched | feasible | 483.044 | 4 | 701.206 | 0 | 10.053 |
+| development_small | 15 | researched | feasible | 483.044 | 4 | 701.206 | 0 | 10.228 |
 | development_medium | 45 | rule | feasible | 1683.397 | 11 | 2199.093 | 0 | 0.000 |
-| development_medium | 45 | researched | feasible | 1071.159 | 8 | 2174.676 | 0 | 28.314 |
+| development_medium | 45 | researched | feasible | 1071.159 | 8 | 2174.676 | 0 | 28.692 |
 | development_large | 120 | rule | feasible | 3523.223 | 25 | 5831.634 | 8 | 0.002 |
-| development_large | 120 | researched | feasible | 2155.902 | 20 | 5309.162 | 0 | 84.722 |
+| development_large | 120 | researched | feasible | 2155.902 | 20 | 5309.162 | 0 | 83.652 |
 | edge_case | 10 | rule | no feasible decision found | - | - | - | - | 0.000 |
 | edge_case | 10 | researched | no feasible decision found | - | - | - | - | 0.007 |
 

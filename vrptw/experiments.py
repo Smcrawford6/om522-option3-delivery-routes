@@ -23,8 +23,8 @@ RESULTS = ROOT / "results"
 INSTANCES = ["hand_checkable", "development_small", "development_medium", "development_large"]
 METHODS = {"rule": "Rule to beat (nearest feasible neighbor)",
            "researched": "Researched (Solomon I1 + local search + ruin and recreate)"}
-COLOR = {"rule": "#eb6834", "researched": "#2a78d6"}  # categorical slots 2 and 1
-CROSSING = "#e34948"
+COLOR = {"rule": "#828a8f", "researched": "#9e1b32"}  # University of Alabama gray and crimson
+CROSSING = "#16181d"  # dashed near-black, so it never reads as either method
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e4e3df"
 
 # Stress test: uncertain travel times (brief: "a congestion factor per scenario").
@@ -177,7 +177,7 @@ def _plot_routes(name):
         ax.set_yticks([])
         for _s in ax.spines.values():
             _s.set_color(GRID)
-    fig.suptitle(f"{name}: routes drawn on the plotting coordinates (black square = depot; dashed red = a route "
+    fig.suptitle(f"{name}: routes drawn on the plotting coordinates (black square = depot; dashed black = a route "
                  f"that crosses itself)", fontsize=10, color=MUTED, x=0.01, ha="left")
     fig.tight_layout()
     fig.savefig(RESULTS / f"routes_{name}.png", dpi=150)

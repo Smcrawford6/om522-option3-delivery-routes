@@ -1,11 +1,11 @@
 instance,customers,method,status,checker,total_travel_time,vehicles_used,waiting_time,self_crossings,computation_time_s,stopping_rule,start_cost
 hand_checkable,6,rule,feasible,feasible,352.417,2,232.861,0,0.0,all vehicles returned,
-hand_checkable,6,researched,feasible,feasible,329.67,2,328.798,0,3.964,iteration count,329.67
+hand_checkable,6,researched,feasible,feasible,329.67,2,328.798,0,3.284,iteration count,329.67
 development_small,15,rule,feasible,feasible,620.581,5,845.804,1,0.0,all vehicles returned,
-development_small,15,researched,feasible,feasible,483.044,4,701.206,0,10.053,iteration count,484.155
+development_small,15,researched,feasible,feasible,483.044,4,701.206,0,10.228,iteration count,484.155
 development_medium,45,rule,feasible,feasible,1683.397,11,2199.093,0,0.0,all vehicles returned,
-development_medium,45,researched,feasible,feasible,1071.159,8,2174.676,0,28.314,iteration count,1114.436
+development_medium,45,researched,feasible,feasible,1071.159,8,2174.676,0,28.692,iteration count,1114.436
 development_large,120,rule,feasible,feasible,3523.223,25,5831.634,8,0.002,all vehicles returned,
-development_large,120,researched,feasible,feasible,2155.902,20,5309.162,0,84.722,iteration count,2388.686
+development_large,120,researched,feasible,feasible,2155.902,20,5309.162,0,83.652,iteration count,2388.686
 edge_case,10,rule,no feasible decision found,n/a,,,,,0.0,all vehicles returned,
 edge_case,10,researched,no feasible decision found,n/a,,,,,0.007,,

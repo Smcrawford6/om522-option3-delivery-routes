@@ -145,6 +145,6 @@
   ],
   "best_cost": 329.67,
   "stopping_rule": "iteration count",
-  "seconds": 3.9639280999999755,
-  "computation_time_s": 3.963942299998962
+  "seconds": 3.284171499999502,
+  "computation_time_s": 3.2841861999986577
 }

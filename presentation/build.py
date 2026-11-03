@@ -343,7 +343,7 @@ slide(ZACC, "Deterministic comparison: four instances", comparison_table() + f""
 slide(ZACC, "What the dispatcher sees", f"""
 <img class="wide tall" src="{img('results/routes_development_large.png')}" alt="Route maps for the large instance, rule versus researched">
 """, [
-    f"Here's the 120-customer case on the map. On the left is the rule: greedy routes that zig-zag and double back, with the {_CROSS_ROUTES} routes that cross themselves dashed in red, {_CROSSINGS} crossings in all. On the right is ours: compact loops out of the depot and no route that crosses itself.",
+    f"Here's the 120-customer case on the map. On the left is the rule: greedy routes that zig-zag and double back, with the {_CROSS_ROUTES} routes that cross themselves dashed in black, {_CROSSINGS} crossings in all. On the right is ours: compact loops out of the depot and no route that crosses itself.",
 ], 3)
 
 slide(ZACC, "Stress test: what if travel times are wrong?", f"""
@@ -417,9 +417,9 @@ pixi run solve &lt;input_dir&gt; &lt;output_dir&gt;</pre>
 # --- render ----------------------------------------------------------------------------
 
 CSS = """
-:root{--ink:#16181d;--muted:#5b5f68;--line:#e3e1dc;--bg:#f6f5f2;--paper:#ffffff;--accent:#9e1b32;--blue:#2a78d6;--orange:#eb6834;--soft:#f3e7e9}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#eceae5;--muted:#a9a69e;--line:#34363c;--bg:#101114;--paper:#1a1b1f;--accent:#e0566f;--soft:#2a1d21;--blue:#5a9be8}}
-:root[data-theme="dark"]{--ink:#eceae5;--muted:#a9a69e;--line:#34363c;--bg:#101114;--paper:#1a1b1f;--accent:#e0566f;--soft:#2a1d21;--blue:#5a9be8}
+:root{--ink:#16181d;--muted:#5b5f68;--line:#e3e1dc;--bg:#f6f5f2;--paper:#ffffff;--accent:#9e1b32;--blue:#9e1b32;--orange:#828a8f;--soft:#f3e7e9}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#eceae5;--muted:#a9a69e;--line:#34363c;--bg:#101114;--paper:#1a1b1f;--accent:#e0566f;--soft:#2a1d21;--blue:#e0566f}}
+:root[data-theme="dark"]{--ink:#eceae5;--muted:#a9a69e;--line:#34363c;--bg:#101114;--paper:#1a1b1f;--accent:#e0566f;--soft:#2a1d21;--blue:#e0566f}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Inter","Segoe UI",system-ui,sans-serif}
 """
 
