@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300" role="img"
+     aria-label="How the tool works: input checks, then the rule to beat or the three-stage researched method, then the independent checker">
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #0b0b0b; }
+    .h { font-size: 15px; font-weight: 700; }
+    .t { font-size: 13px; font-weight: 700; }
+    .s { font-size: 12px; fill: #52514e; }
+    .v { font-size: 15px; font-weight: 700; fill: #9e1b32; }
+    .vg { font-size: 15px; font-weight: 700; fill: #5d6468; }
+    .n { font-size: 12px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+    .arrow { stroke: #52514e; stroke-width: 1.5; fill: none; marker-end: url(#a); }
+  </style>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0 0 L10 5 L0 10 z" fill="#52514e"/></marker></defs>
+  <rect width="960" height="300" rx="14" fill="#f7f6f3"/>
+  <text x="24" y="34" class="h">How one planning run works (numbers: medium case, 45 customers)</text>
+  <g transform="translate(24,96)">
+    <rect width="176" height="150" rx="10" fill="#ffffff" stroke="#c9c8c2"/>
+    <text x="14" y="28" class="t">Day's input files</text>
+    <text x="14" y="52" class="s">customers, trucks,</text>
+    <text x="14" y="68" class="s">depot, travel times</text>
+    <text x="14" y="100" class="t">Four input checks</text>
+    <text x="14" y="122" class="s">bad file? clear error,</text>
+    <text x="14" y="138" class="s">exit status 2</text>
+  </g>
+  <path d="M202 140 C226 140 214 104 246 98" class="arrow"/>
+  <path d="M202 200 h44" class="arrow"/>
+  <g transform="translate(250,64)">
+    <rect width="582" height="56" rx="10" fill="#ffffff" stroke="#828a8f" stroke-width="1.5"/>
+    <text x="14" y="24" class="t">Rule to beat: nearest feasible neighbor</text>
+    <text x="14" y="44" class="s">each truck drives to the closest customer that still fits; never revisits a choice</text>
+    <text x="568" y="36" class="vg" text-anchor="end">1,683 min</text>
+  </g>
+  <text x="250" y="140" class="s">Researched method (what <tspan font-weight="700">pixi run solve</tspan> runs): every move is checked against every rule, including no self-crossing</text>
+  
+  <g transform="translate(250,150)">
+    <rect width="182" height="96" rx="10" fill="#ffffff" stroke="#9e1b32" stroke-width="1.5"/>
+    <circle cx="22" cy="24" r="12" fill="#9e1b32"/><text x="22" y="28.5" class="n">1</text>
+    <text x="42" y="29" class="t">Solomon I1 build</text>
+    <text x="14" y="58" class="s">12 starting plans</text>
+    <text x="14" y="82" class="v">best 1,205 min</text>
+  </g><path d="M434 198 h14" class="arrow"/>
+  <g transform="translate(450,150)">
+    <rect width="182" height="96" rx="10" fill="#ffffff" stroke="#9e1b32" stroke-width="1.5"/>
+    <circle cx="22" cy="24" r="12" fill="#9e1b32"/><text x="22" y="28.5" class="n">2</text>
+    <text x="42" y="29" class="t">Local search</text>
+    <text x="14" y="58" class="s">5 kinds of moves</text>
+    <text x="14" y="82" class="v">1,114 min</text>
+  </g><path d="M634 198 h14" class="arrow"/>
+  <g transform="translate(650,150)">
+    <rect width="182" height="96" rx="10" fill="#ffffff" stroke="#9e1b32" stroke-width="1.5"/>
+    <circle cx="22" cy="24" r="12" fill="#9e1b32"/><text x="22" y="28.5" class="n">3</text>
+    <text x="42" y="29" class="t">Ruin and recreate</text>
+    <text x="14" y="58" class="s">4 chains x 2,000 iterations</text>
+    <text x="14" y="82" class="v">1,071 min</text>
+  </g>
+  <path d="M834 92 C884 92 896 140 896 168" class="arrow"/>
+  <path d="M834 210 h10" class="arrow"/>
+  <g transform="translate(846,172)">
+    <rect width="100" height="74" rx="10" fill="#0b0b0b"/>
+    <text x="50" y="30" class="n">Independent</text>
+    <text x="50" y="46" class="n">checker</text>
+    <text x="50" y="62" class="n" font-weight="400">decision.json</text>
+  </g>
+  <text x="24" y="282" class="s">The checker shares no code with either method and recomputes every arrival, load, and measure from the visit lists.</text>
+</svg>

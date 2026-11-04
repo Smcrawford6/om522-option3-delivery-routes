@@ -142,19 +142,27 @@ def main(argv=None):
     p.add_argument("decision")
     sub.add_parser("compare", help="deterministic comparison on the four supplied instances")
     sub.add_parser("stress", help="stress test of both fixed plans on development_medium")
+    sub.add_parser("traces", help="rerun the researched method on the four instances and save convergence traces")
+    sub.add_parser("site", help="rebuild the README figures and the website data in docs/ from results/")
     sub.add_parser("reproduce", help="regenerate every submitted table and figure")
     args = parser.parse_args(argv)
     if args.command == "solve":
         return cmd_solve(args)
     if args.command == "check":
         return cmd_check(args)
-    from . import experiments
+    from . import experiments, visuals
     if args.command == "compare":
         experiments.compare()
     elif args.command == "stress":
         experiments.stress()
+    elif args.command == "traces":
+        visuals.traces()
+    elif args.command == "site":
+        visuals.site()
     else:
         experiments.reproduce()
+        visuals.traces()
+        visuals.site()
     return 0
 
 
