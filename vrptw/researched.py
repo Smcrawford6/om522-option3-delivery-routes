@@ -433,8 +433,12 @@ def recreate(search, removed, rng):
     return True
 
 
-def anneal(search, routes, cost, iterations, rng, deadline, log=None):
-    """One ruin-and-recreate chain with simulated-annealing acceptance."""
+def anneal(search, routes, cost, iterations, rng, deadline, log=None, trace=None):
+    """One ruin-and-recreate chain with simulated-annealing acceptance.
+
+    trace, if given, is a list that receives (iteration, current cost, best
+    cost) after every iteration; it is only read by the figures and never
+    changes the search."""
     inst = search.inst
     _best_routes, _best_cost = routes, cost
     _current_routes, _current_cost = routes, cost
@@ -468,6 +472,8 @@ def anneal(search, routes, cost, iterations, rng, deadline, log=None):
                     _best_routes, _best_cost, _best_iteration = _current_routes, _cost, _it
         _temperature *= _cooling
         _done = _it
+        if trace is not None:
+            trace.append((_it, _current_cost, _best_cost))
         if log and _it % 500 == 0:
             log(f"    iteration {_it}: current {_current_cost:.3f}, best {_best_cost:.3f}")
     return _best_routes, _best_cost, {"iterations_run": _done, "best_iteration": _best_iteration,
@@ -476,7 +482,7 @@ def anneal(search, routes, cost, iterations, rng, deadline, log=None):
 
 
 def solve(inst, iterations=DEFAULT_ITERATIONS, chains=DEFAULT_CHAINS, seed=DEFAULT_SEED,
-          time_limit=DEFAULT_TIME_LIMIT, log=None):
+          time_limit=DEFAULT_TIME_LIMIT, log=None, trace=None):
     """Run the researched method.  Returns (routes or None, run information)."""
     _clock = time.perf_counter()
     _deadline = _clock + time_limit
@@ -530,7 +536,11 @@ def solve(inst, iterations=DEFAULT_ITERATIONS, chains=DEFAULT_CHAINS, seed=DEFAU
     _chain_info = []
     for _chain in range(chains):
         rng = random.Random(seed * 100 + _chain)
-        _routes, _cost, _record = anneal(search, _start_routes, _start_cost, iterations, rng, _deadline, log)
+        _chain_trace = None if trace is None else []
+        _routes, _cost, _record = anneal(search, _start_routes, _start_cost, iterations, rng, _deadline, log,
+                                         _chain_trace)
+        if trace is not None:
+            trace.append(_chain_trace)
         _chain_info.append(dict(_record, chain=_chain, chain_seed=seed * 100 + _chain))
         if log:
             log(f"  chain {_chain}: best {_cost:.3f}")

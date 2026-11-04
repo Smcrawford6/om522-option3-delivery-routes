@@ -2,6 +2,29 @@
 
 **Team:** Sadie Crawford, Zacc Gleason, Annabelle Kemp (OM 522, Fall 2026)
 
+<p>
+  <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-9e1b32">
+  <img alt="Pixi" src="https://img.shields.io/badge/env-pixi-828a8f">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-21%20passing-9e1b32">
+  <img alt="Checker" src="https://img.shields.io/badge/checker-every%20plan%20feasible-828a8f">
+  <img alt="No routing packages" src="https://img.shields.io/badge/solver-plain%20Python-828a8f">
+</p>
+
+> ### [▶ Explore the interactive site](https://smcrawford6.github.io/om522-option3-delivery-routes/)
+> Pick the **small, medium, or large** case (or the hand-checkable and edge cases), switch between the
+> rule to beat and our method or show them side by side, hover any stop or truck for its times, and
+> click a truck to follow just that driver.
+
+| **38.8%** | **25 → 20** | **0** | **All** |
+| :---: | :---: | :---: | :---: |
+| less driving on the 120-customer day | trucks needed on that day | routes in our plans that cross themselves | plans pass the independent checker |
+
+**Contents:** [At a glance](#at-a-glance) · [Explore each case](#explore-each-case) ·
+[How it works](#how-it-works) · [Quick start](#quick-start) · [Method 1](#method-1-the-rule-to-beat-nearest-feasible-neighbor) ·
+[Method 2](#method-2-the-researched-method-solomon-i1--local-search--ruin-and-recreate) ·
+[Comparison](#deterministic-comparison-resultscomparisonmd) · [Stress test](#stress-test-of-the-fixed-plans-resultsstress) ·
+[Recommendation](#recommendation)
+
 We built this tool for the dispatcher at a single-depot delivery company. Every morning, before anyone
 leaves the yard, the dispatcher has to decide which truck takes which customers and in what order each
 driver should visit them. The dispatcher runs one command on that day's files and gets back a timed route
@@ -10,6 +33,142 @@ We added one assumption that the brief doesn't ask for: a truck's route can't cr
 map, because we don't think a driver should ever have to double back across their own path. Two
 different trucks' routes are still allowed to cross. Our researched method treats this as a hard rule.
 The rule to beat is kept exactly as the brief describes it, and its crossings are only reported.
+
+## At a glance
+
+<img src="results/comparison.png" alt="Total travel and vehicles used, rule to beat against researched, on every case" width="100%">
+
+Where the saving comes from: total travel after each stage of the researched method, against the rule to beat.
+
+<img src="docs/img/stages.png" alt="Total travel after each stage on every case" width="100%">
+
+## Explore each case
+
+Click a case to expand it. The [interactive site](https://smcrawford6.github.io/om522-option3-delivery-routes/) shows the same plans with hover details.
+
+<details>
+<summary><b>Hand-checkable</b>: 6 customers. Travel 352.4 → <b>329.7 min (6.5% less)</b>, trucks 2 → <b>2</b></summary>
+
+| | Rule to beat | Researched |
+| --- | ---: | ---: |
+| Total travel (min) | 352.417 | **329.670** |
+| Trucks used | 2 | **2** |
+| Waiting (min) | 232.9 | 328.8 |
+| Self-crossings | 0 | **0** |
+| Checker | feasible | feasible |
+
+**Both plans on the map** (gray = rule to beat, crimson = researched, dashed black = a route that crosses itself):
+
+<img src="results/routes_hand_checkable.png" alt="Hand-checkable case: routes of both plans" width="100%">
+
+**Each truck of the researched plan**, stops numbered in visiting order:
+
+<img src="docs/img/trucks_hand_checkable.png" alt="Hand-checkable case: one panel per truck" width="100%">
+
+**Each truck's day**: driving, service, waiting, and the customers' time windows:
+
+<img src="docs/img/timeline_hand_checkable.png" alt="Hand-checkable case: timeline of each truck" width="100%">
+
+[Open this case on the interactive site](https://smcrawford6.github.io/om522-option3-delivery-routes/#case=hand&plan=compare)
+
+</details>
+
+<details>
+<summary><b>Small</b>: 15 customers. Travel 620.6 → <b>483.0 min (22.2% less)</b>, trucks 5 → <b>4</b></summary>
+
+| | Rule to beat | Researched |
+| --- | ---: | ---: |
+| Total travel (min) | 620.581 | **483.044** |
+| Trucks used | 5 | **4** |
+| Waiting (min) | 845.8 | 701.2 |
+| Self-crossings | 1 | **0** |
+| Checker | feasible | feasible |
+
+**Both plans on the map** (gray = rule to beat, crimson = researched, dashed black = a route that crosses itself):
+
+<img src="results/routes_development_small.png" alt="Small case: routes of both plans" width="100%">
+
+**Each truck of the researched plan**, stops numbered in visiting order:
+
+<img src="docs/img/trucks_development_small.png" alt="Small case: one panel per truck" width="100%">
+
+**Each truck's day**: driving, service, waiting, and the customers' time windows:
+
+<img src="docs/img/timeline_development_small.png" alt="Small case: timeline of each truck" width="100%">
+
+[Open this case on the interactive site](https://smcrawford6.github.io/om522-option3-delivery-routes/#case=small&plan=compare)
+
+</details>
+
+<details open>
+<summary><b>Medium</b>: 45 customers. Travel 1,683.4 → <b>1,071.2 min (36.4% less)</b>, trucks 11 → <b>8</b></summary>
+
+| | Rule to beat | Researched |
+| --- | ---: | ---: |
+| Total travel (min) | 1,683.397 | **1,071.159** |
+| Trucks used | 11 | **8** |
+| Waiting (min) | 2,199.1 | 2,174.7 |
+| Self-crossings | 0 | **0** |
+| Checker | feasible | feasible |
+
+**Both plans on the map** (gray = rule to beat, crimson = researched, dashed black = a route that crosses itself):
+
+<img src="results/routes_development_medium.png" alt="Medium case: routes of both plans" width="100%">
+
+**Each truck of the researched plan**, stops numbered in visiting order:
+
+<img src="docs/img/trucks_development_medium.png" alt="Medium case: one panel per truck" width="100%">
+
+**Each truck's day**: driving, service, waiting, and the customers' time windows:
+
+<img src="docs/img/timeline_development_medium.png" alt="Medium case: timeline of each truck" width="100%">
+
+[Open this case on the interactive site](https://smcrawford6.github.io/om522-option3-delivery-routes/#case=medium&plan=compare)
+
+</details>
+
+<details>
+<summary><b>Large</b>: 120 customers. Travel 3,523.2 → <b>2,155.9 min (38.8% less)</b>, trucks 25 → <b>20</b></summary>
+
+| | Rule to beat | Researched |
+| --- | ---: | ---: |
+| Total travel (min) | 3,523.223 | **2,155.902** |
+| Trucks used | 25 | **20** |
+| Waiting (min) | 5,831.6 | 5,309.2 |
+| Self-crossings | 8 | **0** |
+| Checker | feasible | feasible |
+
+**Both plans on the map** (gray = rule to beat, crimson = researched, dashed black = a route that crosses itself):
+
+<img src="results/routes_development_large.png" alt="Large case: routes of both plans" width="100%">
+
+**Each truck of the researched plan**, stops numbered in visiting order:
+
+<img src="docs/img/trucks_development_large.png" alt="Large case: one panel per truck" width="100%">
+
+**Each truck's day**: driving, service, waiting, and the customers' time windows:
+
+<img src="docs/img/timeline_development_large.png" alt="Large case: timeline of each truck" width="100%">
+
+[Open this case on the interactive site](https://smcrawford6.github.io/om522-option3-delivery-routes/#case=large&plan=compare)
+
+</details>
+
+<details>
+<summary><b>Edge case</b>: 10 customers. No feasible plan exists, and both methods say so</summary>
+
+Customer C010 orders 65 units, but the largest truck carries 60, so no plan can serve every customer.
+Both methods print `no feasible decision found`, write no `decision.json`, and exit with status 0.
+
+<img src="docs/img/edge_case.png" alt="Edge case: each customer's demand against the largest truck" width="80%">
+
+[Open the edge case on the interactive site](https://smcrawford6.github.io/om522-option3-delivery-routes/#case=edge&plan=compare)
+
+</details>
+
+## How it works
+
+<img src="docs/img/pipeline.svg" alt="How one planning run works: input checks, then the rule to beat or the three-stage researched method, then the independent checker" width="100%">
 
 ## Quick start
 
@@ -23,6 +182,7 @@ pixi run check <input_dir> <output_dir>/decision.json   # independent checker
 pixi run test                                       # the automated tests
 pixi run reproduce                                  # regenerates every submitted table, figure, and the deck
 pixi run presentation                               # rebuilds only presentation/ from results/
+pixi run site                                       # rebuilds the README figures and the website in docs/
 ```
 
 `solve` reads any instance directory in the published format and writes `decision.json` (the structure of
@@ -50,6 +210,8 @@ Options for `solve`: `--method rule|researched` (default `researched`), `--seed`
 | `vrptw/cli.py`, `vrptw/experiments.py` | Commands, deterministic comparison, stress test, and figures. |
 | `tests/test_tool.py` | 21 tests: the three required ones plus loader, checker, crossing, reproducibility, row-order, and 60-customer held-out-sized tests. |
 | `results/` | Submitted decisions, comparison tables, figures, saved stress scenarios, and stress results. |
+| `vrptw/visuals.py` | README figures and the website data (`pixi run site`), and the convergence traces (`pixi run traces`). Reads the saved results only. |
+| `docs/` | The interactive project website (GitHub Pages): `index.html`, generated `data/cases.js`, and the figures in `docs/img/`. |
 | `presentation/` | Final-video slide deck (`slides.html`, arrow keys) and speaker script (`script.html`), built by `build.py` from `results/` and the code. |
 | `hand_checkable/`, `development_*/`, `edge_case/`, `worked-example/`, `DATA_DICTIONARY.md`, `DATA_README.md` | The instructor's data package, unchanged. |
 
@@ -120,6 +282,11 @@ service start* at each position. The latest starts make a time-window check for 
    returned, and it is verified once more before it is written.
 
 No optimization solver is used (so there is no solver status to report), and no routing package is used.
+
+<img src="docs/img/convergence.png" alt="Best travel found by each of the four ruin-and-recreate chains, per iteration" width="100%">
+
+*Stage 3 on each case: the best plan each of the four chains has found so far (log-scale iterations).
+Most of the gain comes in the first few hundred iterations.*
 
 **Stopping rule.** 4 chains × 2,000 ruin-and-recreate iterations, a fixed count. The 300-second time
 limit is only a safety cap (checked between iterations) and is never reached on the supplied instances
@@ -202,12 +369,16 @@ is best in general.
 | Violations in total (late services + late returns) | 12 (6 + 6) | 12 (12 + 0) |
 | Minutes late per scenario, mean | 2.1 | 1.7 |
 
+<img src="docs/img/stress_strip.png" alt="Realized travel of both plans on 30 simulated days" width="100%">
+
 The per-scenario plot (`results/stress/stress_per_scenario.png`) shows realized travel, vehicles used
 (constant for a fixed plan), and violations. Mean realized travel is slightly below planned travel for
 both plans because these 30 congestion factors average 0.974.
 
 **Sensitivity** (`results/stress/sensitivity.md`): the same saved scenarios rescaled to heavier average
 congestion.
+
+<img src="docs/img/sensitivity.png" alt="Days with a violation, late returns, and minutes late as traffic gets heavier" width="100%">
 
 | Mean congestion | Scenarios with a violation (rule / researched) | Violations in total (rule / researched) | Late returns (rule / researched) |
 | ---: | --- | --- | --- |

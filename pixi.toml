@@ -21,7 +21,12 @@ check = "python -m vrptw check"
 compare = "python -m vrptw compare"
 stress = "python -m vrptw stress"
 test = "pytest -q"
-# Regenerates every submitted table and figure (scenarios first).
+# README figures and the website (docs/) from the saved results; `traces`
+# reruns the researched method once per instance to record its convergence.
+traces = "python -m vrptw traces"
+site = "python -m vrptw site"
+# Regenerates every submitted table and figure (scenarios first), the
+# convergence traces, the README figures, and the website data.
 reproduce = "python -m vrptw reproduce && python presentation/build.py"
 
 # Rebuilds presentation/slides.html and presentation/script.html from results/.
