@@ -31,3 +31,17 @@ reproduce = "python -m vrptw reproduce && python presentation/build.py"
 
 # Rebuilds presentation/slides.html and presentation/script.html from results/.
 presentation = "python presentation/build.py"
+
+# --- Live-demo notebook (separate environment; the graded commands never use it) ---
+# `pixi run demo` opens demo/live_demo.py in marimo in its own "demo"
+# environment. The default environment used by solve, rule, check, test, and
+# reproduce is unchanged.
+[feature.demo.dependencies]
+marimo = ">=0.9"
+
+[feature.demo.tasks]
+demo = "marimo edit demo/live_demo.py"
+demo-app = "marimo run demo/live_demo.py"
+
+[environments]
+demo = ["demo"]

@@ -183,6 +183,7 @@ pixi run test                                       # the automated tests
 pixi run reproduce                                  # regenerates every submitted table, figure, and the deck
 pixi run presentation                               # rebuilds only presentation/ from results/
 pixi run site                                       # rebuilds the README figures and the website in docs/
+pixi run demo                                       # live-demo notebook in marimo (separate "demo" environment)
 ```
 
 `solve` reads any instance directory in the published format and writes `decision.json` (the structure of
@@ -211,6 +212,7 @@ Options for `solve`: `--method rule|researched` (default `researched`), `--seed`
 | `tests/test_tool.py` | 21 tests: the three required ones plus loader, checker, crossing, reproducibility, row-order, and 60-customer held-out-sized tests. |
 | `results/` | Submitted decisions, comparison tables, figures, saved stress scenarios, and stress results. |
 | `vrptw/visuals.py` | README figures and the website data (`pixi run site`), and the convergence traces (`pixi run traces`). Reads the saved results only. |
+| `demo/live_demo.py` | Live-demo marimo notebook: pick a case and method, run it, see the checker's results, map, plan, and code. Runs in its own Pixi environment (`pixi run demo`); the graded commands never use it. |
 | `docs/` | The interactive project website (GitHub Pages): `index.html`, generated `data/cases.js`, and the figures in `docs/img/`. |
 | `presentation/` | Final-video slide deck (`slides.html`, arrow keys) and speaker script (`script.html`), built by `build.py` from `results/` and the code. |
 | `hand_checkable/`, `development_*/`, `edge_case/`, `worked-example/`, `DATA_DICTIONARY.md`, `DATA_README.md` | The instructor's data package, unchanged. |
